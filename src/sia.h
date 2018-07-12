@@ -1,5 +1,3 @@
-#include <stdint.h>
-
 // bin2hex converts binary to hex.
 void bin2hex(uint8_t *out, uint8_t *in, uint64_t inlen);
 

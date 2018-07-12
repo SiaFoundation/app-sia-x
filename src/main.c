@@ -15,15 +15,13 @@
 *  limitations under the License.
 ********************************************************************************/
 
+#include <stdint.h>
+#include <stdbool.h>
 #include "os.h"
 #include "cx.h"
-#include <stdbool.h>
-#include "sia.h"
-
 #include "os_io_seproxyhal.h"
-#include "string.h"
-
 #include "glyphs.h"
+#include "sia.h"
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 

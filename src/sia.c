@@ -1,5 +1,6 @@
 #include "os.h"
 #include "cx.h"
+#include <stdint.h>
 #include "sia.h"
 
 void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey) {
