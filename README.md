@@ -85,7 +85,7 @@ the rest to us:
   "siacoinoutputs": [
     {
       "value": "5000000000000000000000000",
-      "unlockhash": "17d25299caeccaa7d1598751f239dd47570d148bb08658e596112d917dfa6bc8400b44f239bb" // friend's address
+      "unlockhash": "17d25299caeccaa7d1598751f239dd47570d148bb08658e596112d917dfa6bc8400b44f239bb"
     },
     {
       "value": "4000000000000000000000000",
