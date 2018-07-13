@@ -27,7 +27,7 @@ app is probably more secure than existing alternatives.
 
 To begin, install the app on your Ledger Nano S, open it, and run the
 `getPublicKey.py` script on your computer. This will generate a public key for
-seed index 0 and its associated Sia address for a specific set of unlock
+index 0 and its associated Sia address for a specific set of unlock
 conditions, which we will use later. You can now receive coins at this
 address. To generate a different address, set the `--index` argument to
 `getPublicKey.py` appropriately. Make note of the index you used, because you
@@ -44,9 +44,9 @@ Possible attacks at this point:
   spend the coins later. This attack will remain viable until the Sia app is
   updated to display the public key on the device screen.
 
-- An attacker could secretly send a different seed index to the device than
+- An attacker could secretly send a different key index to the device than
   the one you specified, making it difficult (likely impossible) to spend the
-  coins later. Make sure to compare the key displayed indexes.
+  coins later. Make sure to compare the displayed indexes.
 
 Let's assume that you generated the following public key and address:
 
@@ -151,7 +151,7 @@ Possible attacks at this point:
   biggest weakness in the Sia app, and must be addressed before the official
   release.
 
-- An attacker could secretly send a different seed index than the one you
+- An attacker could secretly send a different key index than the one you
   specified. This would result in an invalid signature. Coins could not be
   stolen this way, but the attacker could prevent you from creating a
   transaction. Make sure to compare the displayed indexes.
