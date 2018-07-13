@@ -46,6 +46,7 @@ void bin2hex(uint8_t *out, uint8_t *in, uint64_t inlen) {
 		out[2*i+0] = hex[(in[i]>>4) & 0x0F];
 		out[2*i+1] = hex[(in[i]>>0) & 0x0F];
 	}
+	out[2*inlen] = '\0';
 }
 
 void pubkeyToSiaAddress(uint8_t *out, cx_ecfp_public_key_t *publicKey) {
@@ -104,4 +105,23 @@ void pubkeyToSiaAddress(uint8_t *out, cx_ecfp_public_key_t *publicKey) {
 	// convert the hash+checksum to hex
 	bin2hex(out, merkleData+1, 32);
 	bin2hex(out+64, checksum, sizeof(checksum));
+}
+
+int bin2dec(uint8_t *out, uint64_t n) {
+	if (n == 0) {
+		os_memmove(out, "0\0", 2);
+		return 1;
+	}
+	// determine final length
+	int len = 0;
+	for (uint64_t nn = n; nn != 0; nn /= 10) {
+		len++;
+	}
+	// write digits in big-endian order
+	for (int i = len-1; i >= 0; i--) {
+		out[i] = (n % 10) + '0';
+		n /= 10;
+	}
+	out[len] = '\0';
+	return len;
 }

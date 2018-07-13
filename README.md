@@ -46,8 +46,7 @@ Possible attacks at this point:
 
 - An attacker could secretly send a different seed index to the device than
   the one you specified, making it difficult (likely impossible) to spend the
-  coins later. This attack will remain viable until the Sia app is updated to
-  display the seed index on the device screen.
+  coins later. Make sure to compare the key displayed indexes.
 
 Let's assume that you generated the following public key and address:
 
@@ -155,7 +154,7 @@ Possible attacks at this point:
 - An attacker could secretly send a different seed index than the one you
   specified. This would result in an invalid signature. Coins could not be
   stolen this way, but the attacker could prevent you from creating a
-  transaction.
+  transaction. Make sure to compare the displayed indexes.
 
 - An attacker could display a different signature than the one actually sent
   by the device. As in the previous attack, this would merely result in an

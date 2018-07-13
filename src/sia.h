@@ -1,5 +1,9 @@
-// bin2hex converts binary to hex.
+// bin2hex converts binary to hex and appends a final NUL byte.
 void bin2hex(uint8_t *out, uint8_t *in, uint64_t inlen);
+
+// bin2dec converts an unsigned integer to a decimal string and appends a
+// final NUL byte. It returns the length of the string.
+int bin2dec(uint8_t *out, uint64_t n);
 
 // blake2b computes the 256-bit unkeyed BLAKE2B hash of in.
 void blake2b(uint8_t *out, uint64_t outlen, const uint8_t *in, uint64_t inlen);
