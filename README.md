@@ -59,10 +59,28 @@ Address:    996b3fc7de889073b1fffcaa52c18c447cbcf4f6d7825e16e88b73d2ae1aa74cbd96
 Sending coins to this address creates a Siacoin Output that you can spend
 later. You can find these IDs by searching for the address on a public
 explorer or by importing the address into a `siad` wallet. Let's assume that
-you sent 10 SC to the address, creating an output with the ID:
+you sent 10 SC to the address. You can find the ID of this output by using the
+`/wallet/unspent` endpoint:
 
 ```
-48dcaacaf0ecb0ffce702b9115365e52b3cacc01ae87a70d8ca47349fbdc6830
+$ curl -A "Sia-Agent" localhost:9980/wallet/unspent
+{
+  "outputs": [{
+    "id": "48dcaacaf0ecb0ffce702b9115365e52b3cacc01ae87a70d8ca47349fbdc6830",
+    "fundtype": "siacoin output",
+    "unlockconditions": {
+      "timelock": 0,
+      "publickeys": [{
+        "algorithm": "ed25519",
+        "key": "5GhilFqVBKtSCedCZc6TIthzxvyBH9gPqqf+Z9hsfBo="
+      }],
+      "signaturesrequired": 1
+    },
+    "unlockhash": "996b3fc7de889073b1fffcaa52c18c447cbcf4f6d7825e16e88b73d2ae1aa74cbd96f1f1699f",
+    "value":"10000000000000000000000000",
+    "confirmationheight": 162875
+  }]
+}
 ```
 
 Now you can construct a transaction that spends these coins. Let's create a
@@ -104,14 +122,14 @@ the rest to us:
 Save this as `txn.json` and run `go run txnSigHash.go 0 txn.json`. This will
 print the hash of the fields covered by the transaction signature:
 ```
-874f08c9e49c96ad2703f7dac56b9c611afff76c80ecf9d05809fc80a1204b49
+bfa1990672469b3b744e15082c3b3ba610996c1902f6b7d010857b907cdd84df
 ```
 
 To sign the transaction, we pass this hash to the Ledger Nano S using the
 `signHash.py` script:
 
 ```
-$ ./signHash.py 874f08c9e49c96ad2703f7dac56b9c611afff76c80ecf9d05809fc80a1204b49
+$ ./signHash.py bfa1990672469b3b744e15082c3b3ba610996c1902f6b7d010857b907cdd84df
 Signature: 2kWyf9e1uOXCyoH8+gu/AqH4876k8SuRMq+dwgoMf3burpkXV++qyDzMnKmZavPdvjmbH1uL1Glzq6juNunMDA==
 ```
 
@@ -145,15 +163,20 @@ Possible attacks at this point:
 
 Finally, we can append the signature to the transaction:
 
-```json
-...
+```diff
   "transactionsignatures": [{
     "parentid": "48dcaacaf0ecb0ffce702b9115365e52b3cacc01ae87a70d8ca47349fbdc6830",
     "publickeyindex": 0,
-    "coveredfields": { "wholetransaction": true },
-    "signature": "2kWyf9e1uOXCyoH8+gu/AqH4876k8SuRMq+dwgoMf3burpkXV++qyDzMnKmZavPdvjmbH1uL1Glzq6juNunMDA=="
+-    "coveredfields": { "wholetransaction": true }
++    "coveredfields": { "wholetransaction": true },
++    "signature": "2kWyf9e1uOXCyoH8+gu/AqH4876k8SuRMq+dwgoMf3burpkXV++qyDzMnKmZavPdvjmbH1uL1Glzq6juNunMDA=="
   }]
-...
 ```
 
-The transaction is now valid, and can be broadcast using the `/tpool/raw` endpoint.
+The transaction is now valid, and can be broadcast using the `siac wallet
+broadcast` command, or by posting directly to the `/tpool/raw` endpoint:
+
+```
+$ siac wallet broadcast "$(<txn.json)"
+Transaction broadcast successfully
+```
