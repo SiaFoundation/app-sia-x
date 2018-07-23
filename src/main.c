@@ -25,22 +25,22 @@
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-typedef struct publicKeyContext_t {
+typedef struct getPublicKeyContext_t {
 	cx_ecfp_public_key_t publicKey;
 	uint8_t indexStr[40]; // for display; NUL-terminated (variable-length)
 	uint8_t addrStr[77]; // for display; NUL-terminated
-} publicKeyContext_t;
+} getPublicKeyContext_t;
 
-typedef struct hashSigningContext_t {
+typedef struct signHashContext_t {
 	uint32_t keyIndex;
 	uint8_t indexStr[40]; // for display; NUL-terminated (variable-length)
 	uint8_t hash[32];
 	uint8_t hashStr[65]; // for display; NUL-terminated
-} hashSigningContext_t;
+} signHashContext_t;
 
 union {
-	publicKeyContext_t publicKeyContext;
-	hashSigningContext_t hashSigningContext;
+	getPublicKeyContext_t getPublicKeyContext;
+	signHashContext_t signHashContext;
 } global;
 
 // magic global variable implicitly referenced by the UX_ macros
@@ -111,7 +111,7 @@ const bagl_element_t ui_getPublicKey[] = {
 	{
 		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font,                                                          icon
 		{  BAGL_LABELINE,  0x02,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
-		(char *)global.publicKeyContext.indexStr,
+		(char *)global.getPublicKeyContext.indexStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
 	{
@@ -121,7 +121,7 @@ const bagl_element_t ui_getPublicKey[] = {
 
 		// component       userid, x,   y,   width, height, pause,     radius, fill,   fg,       bg,       font,                                                            speed
 		{  BAGL_LABELINE,  0x02,   23,  26,  82,    12,     0x80 | 10, 0,      0,      0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 26   },
-		(char *)global.publicKeyContext.addrStr,
+		(char *)global.getPublicKeyContext.addrStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
 };
@@ -156,9 +156,9 @@ unsigned int ui_getPublicKey_button(unsigned int button_mask, unsigned int butto
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
-		extractPubkeyBytes(G_io_apdu_buffer, &global.publicKeyContext.publicKey);
+		extractPubkeyBytes(G_io_apdu_buffer, &global.getPublicKeyContext.publicKey);
 		tx += 32;
-		os_memmove(G_io_apdu_buffer + tx, global.publicKeyContext.addrStr, 76);
+		os_memmove(G_io_apdu_buffer + tx, global.getPublicKeyContext.addrStr, 76);
 		tx += 76;
 		G_io_apdu_buffer[tx++] = 0x90;
 		G_io_apdu_buffer[tx++] = 0x00;
@@ -178,7 +178,7 @@ unsigned int ui_getPublicKey_button(unsigned int button_mask, unsigned int butto
 // handleGetPublicKey reads a key index, derives the corresponding public key,
 // converts it to a Sia address, and stores the address in fullAddress.
 void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx) {
-	publicKeyContext_t *ctx = &global.publicKeyContext;
+	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 
 	// read key index
 	uint32_t index = U4LE(dataBuffer, 0);
@@ -223,12 +223,12 @@ const bagl_element_t ui_signHash[] = {
 
 	{
 		{  BAGL_LABELINE,  0x02,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
-		(char *)global.hashSigningContext.indexStr,
+		(char *)global.signHashContext.indexStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
 	{
 		{BAGL_LABELINE, 0x02, 23, 26, 82, 12, 0x80 | 10, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 26},
-		(char *)global.hashSigningContext.hashStr,
+		(char *)global.signHashContext.hashStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
 };
@@ -263,7 +263,7 @@ unsigned int ui_signHash_button(unsigned int button_mask, unsigned int button_ma
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
-		deriveAndSign(global.hashSigningContext.keyIndex, global.hashSigningContext.hash, G_io_apdu_buffer);
+		deriveAndSign(global.signHashContext.keyIndex, global.signHashContext.hash, G_io_apdu_buffer);
 		tx += 64;
 		G_io_apdu_buffer[tx++] = 0x90;
 		G_io_apdu_buffer[tx++] = 0x00;
@@ -280,10 +280,10 @@ unsigned int ui_signHash_button(unsigned int button_mask, unsigned int button_ma
 	return 0;
 }
 
-// handleSignHash reads a bip32path and a hash, signs the hash using the key
-// derived from the path, and stores the hex-encoded signature in fullAddress.
+// handleSignHash reads a key index and a hash, signs the hash using the key
+// derived from the index, and stores the hex-encoded signature in fullAddress.
 void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx) {
-	hashSigningContext_t *ctx = &global.hashSigningContext;
+	signHashContext_t *ctx = &global.signHashContext;
 
 	// read key index
 	ctx->keyIndex = U4LE(dataBuffer, 0);
