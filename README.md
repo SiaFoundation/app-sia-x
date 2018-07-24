@@ -41,8 +41,8 @@ Possible attacks at this point:
 
 - An attacker could display a different public key on the computer than the
   one that appears on the device, making it difficult (likely impossible) to
-  spend the coins later. This attack will remain viable until the Sia app is
-  updated to display the public key on the device screen.
+  spend the coins later. Pass the `--pubkey` flag to `getPublicKey.py` to make
+  the device display the public key instead of the address.
 
 - An attacker could secretly send a different key index to the device than
   the one you specified, making it difficult (likely impossible) to spend the
@@ -67,20 +67,29 @@ $ curl -A "Sia-Agent" localhost:9980/wallet/unspent
   "outputs": [{
     "id": "48dcaacaf0ecb0ffce702b9115365e52b3cacc01ae87a70d8ca47349fbdc6830",
     "fundtype": "siacoin output",
-    "unlockconditions": {
-      "timelock": 0,
-      "publickeys": [{
-        "algorithm": "ed25519",
-        "key": "5GhilFqVBKtSCedCZc6TIthzxvyBH9gPqqf+Z9hsfBo="
-      }],
-      "signaturesrequired": 1
-    },
     "unlockhash": "996b3fc7de889073b1fffcaa52c18c447cbcf4f6d7825e16e88b73d2ae1aa74cbd96f1f1699f",
     "value":"10000000000000000000000000",
     "confirmationheight": 162875
   }]
 }
 ```
+
+You will also need the unlock conditions for the address, which are:
+
+```json
+{
+  "timelock": 0,
+  "publickeys": [{
+    "algorithm": "ed25519",
+    "key":"5GhilFqVBKtSCedCZc6TIthzxvyBH9gPqqf+Z9hsfBo="
+  }],
+  "signaturesrequired": 1
+}
+```
+
+If you use the public key to construct more complicated unlock conditions
+(such as a multisig scheme), make sure you write down the unlock conditions
+somewhere.
 
 Now you can construct a transaction that spends these coins. Let's create a
 transaction that sends 5 SC to a friend, pays a 1 SC miner fee, and returns
