@@ -25,14 +25,20 @@ import struct
 import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--index', help="key index to derive")
+parser.add_argument('--index', type=int, help="key index to derive")
+parser.add_argument('--pubkey', action='store_true', help="display pubkey instead of address")
 args = parser.parse_args()
 
 if args.index == None:
 	args.index = 0
 
+if args.pubkey:
+	apdu = "e0010101".decode('hex')
+else:
+	apdu = "e0010100".decode('hex')
+
 dongleIndex = struct.pack("<I", int(args.index))
-apdu = "e0010100".decode('hex') + chr(len(dongleIndex)) + dongleIndex
+apdu += chr(len(dongleIndex)) + dongleIndex
 
 try:
 	dongle = getDongle(False)

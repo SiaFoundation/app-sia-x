@@ -108,7 +108,8 @@ void pubkeyToSiaAddress(uint8_t *out, cx_ecfp_public_key_t *publicKey) {
 
 int bin2dec(uint8_t *out, uint64_t n) {
 	if (n == 0) {
-		os_memmove(out, "0\0", 2);
+		out[0] = '0';
+		out[1] = '\0';
 		return 1;
 	}
 	// determine final length
@@ -123,4 +124,47 @@ int bin2dec(uint8_t *out, uint64_t n) {
 	}
 	out[len] = '\0';
 	return len;
+}
+
+int bin2b64(uint8_t *out, uint8_t *in, uint64_t inlen) {
+    static uint8_t const b64Std[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    if (inlen == 0) {
+        out[0] = '\0';
+        return 0;
+    }
+
+    int di = 0;
+    int si = 0;
+    int n = (inlen / 3) * 3;
+    while (si < n) {
+        // convert 3 binary bytes into 4 base64 bytes
+        uint32_t val = in[si+0]<<16 | in[si+1]<<8 | in[si+2];
+        out[di+0] = b64Std[val>>18&0x3F];
+        out[di+1] = b64Std[val>>12&0x3F];
+        out[di+2] = b64Std[val>>6 &0x3F];
+        out[di+3] = b64Std[val>>0 &0x3F];
+        si += 3;
+        di += 4;
+    }
+    // encode remaining bytes
+    int remain = inlen - si;
+    if (remain == 0) {
+        return di;
+    }
+    uint32_t val = in[si+0] << 16;
+    if (remain == 2) {
+        val |= in[si+1] << 8;
+    }
+    out[di+0] = b64Std[val>>18&0x3F];
+    out[di+1] = b64Std[val>>12&0x3F];
+    if (remain == 2) {
+        out[di+2] = b64Std[val>>6&0x3F];
+        out[di+3] = '=';
+    } else if (remain == 1) {
+        out[di+2] = '=';
+        out[di+3] = '=';
+    }
+    di += 4;
+    out[di] = '\0';
+    return di;
 }
