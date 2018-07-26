@@ -1,3 +1,5 @@
+#define U8BE(buf, off) (((uint64_t)(U4BE(buf, off)) << 32) | ((uint64_t)(U4BE(buf, off + 4)) & 0xFFFFFFFF))
+
 // bin2hex converts binary to hex and appends a final NUL byte.
 void bin2hex(uint8_t *out, uint8_t *in, uint64_t inlen);
 
@@ -8,6 +10,13 @@ int bin2b64(uint8_t *out, uint8_t *in, uint64_t inlen);
 // bin2dec converts an unsigned integer to a decimal string and appends a
 // final NUL byte. It returns the length of the string.
 int bin2dec(uint8_t *out, uint64_t n);
+
+// validCur return true if cur is a valid Sia-encoded currency value.
+bool validCur(uint8_t *cur);
+
+// cur2dec converts a Sia-encoded currency value to a decimal string and
+// appends a final NUL byte. It returns the length of the string.
+int cur2dec(uint8_t *out, uint8_t *cur);
 
 // blake2b computes the 256-bit unkeyed BLAKE2B hash of in.
 void blake2b(uint8_t *out, uint64_t outlen, const uint8_t *in, uint64_t inlen);
