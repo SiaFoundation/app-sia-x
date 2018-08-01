@@ -22,6 +22,7 @@
 #include "os_io_seproxyhal.h"
 #include "glyphs.h"
 #include "sia.h"
+#include "blake2b.h"
 
 // getPublicKey parameters
 #define P2_DISPLAY_ADDRESS 0x00

@@ -1,13 +1,6 @@
 #include <stdint.h>
 #include <os.h>
-
-#define BLAKE2B_BLOCKBYTES 128
-
-typedef struct {
-	uint64_t h[8];
-	uint64_t t;
-	uint64_t f;
-} blake2b_state;
+#include "blake2b.h"
 
 static uint64_t rotr64(const uint64_t w, const unsigned c) {
 	return (w >> c) | (w << (64 - c));
@@ -93,35 +86,53 @@ static void blake2b_compress(blake2b_state *S, const uint8_t block[BLAKE2B_BLOCK
 #undef G
 #undef ROUND
 
-// unkeyed 256-bit blake2b
-void blake2b(uint8_t *out, uint64_t outlen, const uint8_t *in, uint64_t inlen) {
-	// initialize state
-	blake2b_state S;
-	os_memmove(S.h, blake2b_IV, 8*8);
-	S.t = S.f = 0;
-
-	// S.h needs to be xor'ed with the blake2b parameter values; see
+void blake2b_init(blake2b_state *S) {
+	os_memmove(S->h, blake2b_IV, 8*8);
+	S->t = S->f = S->buflen = 0;
+	// S->h needs to be xor'ed with the blake2b parameter values; see
 	// 'blake2b_params' in the reference implementation. Since these
 	// parameters never change for us, we can hardcode the values to xor
 	// against. And as it so happens, most of the parameters are zero-valued,
-	// so we only need to xor the first element of S.h.
-	S.h[0] ^= 16842784ULL;
+	// so we only need to xor the first element of S->h.
+	S->h[0] ^= 16842784ULL;
+}
 
-	// compress full blocks
-	uint64_t rem = inlen;
-	while (rem > BLAKE2B_BLOCKBYTES) {
-		S.t += BLAKE2B_BLOCKBYTES;
-		blake2b_compress(&S, in + S.t);
-		rem -= BLAKE2B_BLOCKBYTES;
+void blake2b_update(blake2b_state *S, const uint8_t *in, uint64_t inlen) {
+	if (inlen == 0) {
+		return;
 	}
-	// compress final (partial) block
-	uint8_t buf[BLAKE2B_BLOCKBYTES];
-	os_memset(buf, 0, sizeof(buf));
-	os_memmove(buf, in + S.t, rem);
-	S.t += rem; // NOTE: does not include padding
-	S.f = (uint64_t)-1; // set last block flag
-	blake2b_compress(&S, buf);
+	uint64_t left = S->buflen;
+	uint64_t fill = BLAKE2B_BLOCKBYTES - left;
+	if (inlen > fill) {
+		S->buflen = 0;
+		os_memmove(S->buf + left, in, fill);
+		S->t += BLAKE2B_BLOCKBYTES;
+		blake2b_compress(S, S->buf);
+		in += fill; inlen -= fill;
+		while (inlen > BLAKE2B_BLOCKBYTES) {
+			S->t += BLAKE2B_BLOCKBYTES;
+			blake2b_compress(S, in);
+			in += BLAKE2B_BLOCKBYTES;
+			inlen -= BLAKE2B_BLOCKBYTES;
+		}
+	}
+	os_memmove(S->buf + S->buflen, in, inlen);
+	S->buflen += inlen;
+}
 
-	// copy S.h into out
-	os_memmove(out, S.h, outlen);
+void blake2b_final(blake2b_state *S, uint8_t *out, uint64_t outlen) {
+	// pad final block with zeros
+	os_memset(S->buf + S->buflen, 0, BLAKE2B_BLOCKBYTES - S->buflen);
+	S->t += S->buflen; // NOTE: does not include padding
+	S->f = (uint64_t)-1; // set last block flag
+	blake2b_compress(S, S->buf);
+	// copy S->h into out
+	os_memmove(out, S->h, outlen);
+}
+
+void blake2b(uint8_t *out, uint64_t outlen, const uint8_t *in, uint64_t inlen) {
+	blake2b_state S;
+	blake2b_init(&S);
+	blake2b_update(&S, in, inlen);
+	blake2b_final(&S, out, outlen);
 }

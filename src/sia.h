@@ -24,9 +24,6 @@ bool validCur(uint8_t *cur);
 // appends a final NUL byte. It returns the length of the string.
 int cur2dec(uint8_t *out, uint8_t *cur);
 
-// blake2b computes the 256-bit unkeyed BLAKE2B hash of in.
-void blake2b(uint8_t *out, uint64_t outlen, const uint8_t *in, uint64_t inlen);
-
 // extractPubkeyBytes converts a Ledger-style public key to a Sia-friendly
 // 32-byte array.
 void extractPubkeyBytes(unsigned char *keyBytes, cx_ecfp_public_key_t *publicKey);

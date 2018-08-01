@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "sia.h"
+#include "blake2b.h"
 
 void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey) {
 	uint8_t keySeed[32];
