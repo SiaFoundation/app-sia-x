@@ -2,8 +2,8 @@
 #include "cx.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "sia.h"
 #include "blake2b.h"
+#include "sia.h"
 
 void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey) {
 	uint8_t keySeed[32];
@@ -255,4 +255,27 @@ int cur2dec(uint8_t *out, uint8_t *cur) {
 	// copy buf->out, trimming whitespace
 	os_memmove(out, buf+i, sizeof(buf)-i);
 	return sizeof(buf)-i-1;
+}
+
+#define SC_ZEROS 24
+
+int cur2SC(uint8_t *outVal, uint8_t decLen) {
+	if (decLen < SC_ZEROS+1) {
+		// if < 1 SC, pad with leading zeros
+		os_memmove(outVal + (SC_ZEROS-decLen)+2, outVal, decLen+1);
+		os_memset(outVal, '0', SC_ZEROS+2-decLen);
+		decLen = SC_ZEROS + 1;
+	} else {
+		os_memmove(outVal + (decLen-SC_ZEROS)+2, outVal + (decLen-SC_ZEROS+1), SC_ZEROS+1);
+	}
+	// add decimal point, trim trailing zeros, and add units
+	outVal[decLen-SC_ZEROS] = '.';
+	while (decLen > 0 && outVal[decLen] == '0') {
+		decLen--;
+	}
+	if (outVal[decLen] == '.') {
+		decLen--;
+	}
+	os_memmove(outVal + decLen + 1, " SC", 4);
+	return decLen + 4;
 }
