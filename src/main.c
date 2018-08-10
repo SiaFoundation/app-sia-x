@@ -32,12 +32,15 @@
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-typedef struct getPublicKeyContext_t {
-	cx_ecfp_public_key_t publicKey;
+typedef struct {
+	uint32_t keyIndex;
+	bool genAddr;
+	uint8_t displayIndex;
 	// NUL-terminated strings for display
-	uint8_t indexStr[40]; // variable-length
-	uint8_t typeStr[11];  // variable length
-	uint8_t addrStr[77];  // variable length
+	uint8_t typeStr[40]; // variable-length
+	uint8_t keyStr[40]; // variable-length
+	uint8_t fullStr[77]; // variable length
+	uint8_t partialStr[13];
 } getPublicKeyContext_t;
 
 typedef struct signHashContext_t {
@@ -84,7 +87,77 @@ void ui_idle(void) {
 	UX_MENU_DISPLAY(0, menu_main, NULL);
 }
 
-const bagl_element_t ui_getPublicKey[] = {
+const bagl_element_t ui_getPublicKey_compare[] = {
+	{
+		{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF, 0, 0},
+		NULL,
+		0, 0, 0, NULL, NULL, NULL
+	},
+	{
+		{BAGL_ICON, 0x01, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_LEFT},
+		NULL,
+		0, 0, 0, NULL, NULL, NULL
+	},
+	{
+		{BAGL_ICON, 0x02, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_RIGHT},
+		NULL,
+		0, 0, 0, NULL, NULL, NULL
+	},
+	{
+		{BAGL_LABELINE, 0x00, 0, 12, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
+		(char *)global.getPublicKeyContext.typeStr,
+		0, 0, 0, NULL, NULL, NULL
+	},
+	{
+		{BAGL_LABELINE, 0x00, 0, 26, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
+		(char *)global.getPublicKeyContext.partialStr,
+		0, 0, 0, NULL, NULL, NULL
+	},
+};
+
+
+const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t *element) {
+	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
+	int fullSize = ctx->genAddr ? 76 : 44;
+
+	// don't display arrows if we're at the end
+	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
+	    (element->component.userid == 2 && ctx->displayIndex == fullSize-12)) {
+		return 0;
+	}
+	return element;
+}
+
+unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
+	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
+	int fullSize = ctx->genAddr ? 76 : 44;
+	switch (button_mask) {
+	case BUTTON_LEFT:
+	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
+		if (ctx->displayIndex > 0) {
+			ctx->displayIndex--;
+		}
+		os_memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
+		UX_REDISPLAY();
+		break;
+
+	case BUTTON_RIGHT:
+	case BUTTON_EVT_FAST | BUTTON_RIGHT: // SEEK RIGHT
+		if (ctx->displayIndex < fullSize-12) {
+			ctx->displayIndex++;
+		}
+		os_memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
+		UX_REDISPLAY();
+		break;
+
+	case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // PROCEED
+		ui_idle();
+		break;
+	}
+	return 0;
+}
+
+const bagl_element_t ui_getPublicKey_approve[] = {
 	{
 		// component       userid, x,   y,  width, height, stroke, radius, fill,      fg,       bg,       font, icon
 		{  BAGL_RECTANGLE, 0x00,   0,   0,  128,   32,     0,      0,      BAGL_FILL, 0x000000, 0xFFFFFF, 0,    0   },
@@ -93,7 +166,6 @@ const bagl_element_t ui_getPublicKey[] = {
 		// these fields only apply to the Ledger Blue
 		0, 0, 0, NULL, NULL, NULL
 	},
-
 	{
 		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font, icon
 		{  BAGL_ICON,      0x00,   3,   12,  7,     7,      0,      0,      0,         0xFFFFFF, 0x000000, 0,    BAGL_GLYPH_ICON_CROSS},
@@ -109,59 +181,22 @@ const bagl_element_t ui_getPublicKey[] = {
 
 	{
 		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font,                                                            icon
-		{  BAGL_LABELINE,  0x01,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
-		"Confirm",
+		{  BAGL_LABELINE,  0x00,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		(char *)global.getPublicKeyContext.typeStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
 	{
 		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font,                                                            icon
-		{  BAGL_LABELINE,  0x01,   0,   26,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
-		(char *)global.getPublicKeyContext.typeStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
-
-	{
-		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font,                                                          icon
-		{  BAGL_LABELINE,  0x02,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
-		(char *)global.getPublicKeyContext.indexStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		// somehow this is magically an animated ticker. Note that for
-		// animated components, "icon" is now "speed" and "stroke" is now
-		// "pause" (the delay after reaching the end)
-
-		// component       userid, x,   y,   width, height, pause,     radius, fill,   fg,       bg,       font,                                                            speed
-		{  BAGL_LABELINE,  0x02,   23,  26,  82,    12,     0x80 | 10, 0,      0,      0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 26   },
-		(char *)global.getPublicKeyContext.addrStr,
+		{  BAGL_LABELINE,  0x00,   0,   26,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		(char *)global.getPublicKeyContext.keyStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
 };
 
-const bagl_element_t* ui_prepro_getPublicKey(const bagl_element_t *element) {
-	if (element->component.userid == 0)         return element; // this element is displayed on every step
-	if (element->component.userid != ux_step+1) return 0;       // this element is not displayed on this step
-
-	// set the redisplay interval and render this element
-	switch (element->component.userid) {
-	case 1:
-		// display "Confirm address" for 2 seconds
-		UX_CALLBACK_SET_INTERVAL(2000);
-		break;
-	case 2:
-		// cycle back to "Confirm address" after scrolling through pubkey
-		UX_CALLBACK_SET_INTERVAL(1000 + bagl_label_roundtrip_duration_ms(element, 7));
-		break;
-	}
-	return element;
-}
-
-// it doesn't look like this function is called anywhere, but UX_DISPLAY is a
-// macro that calls arg##_button. So when we call it with ui_getPublicKey, it
-// calls this function to do the button handling.
-unsigned int ui_getPublicKey_button(unsigned int button_mask, unsigned int button_mask_counter) {
+unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
 	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 	uint16_t tx = 0;
+	cx_ecfp_public_key_t publicKey;
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
 		G_io_apdu_buffer[tx++] = 0x69;
@@ -171,14 +206,33 @@ unsigned int ui_getPublicKey_button(unsigned int button_mask, unsigned int butto
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
-		extractPubkeyBytes(G_io_apdu_buffer, &ctx->publicKey);
+		// derive pubkey and address
+		deriveSiaKeypair(ctx->keyIndex, NULL, &publicKey);
+		extractPubkeyBytes(G_io_apdu_buffer + tx, &publicKey);
 		tx += 32;
-		pubkeyToSiaAddress(G_io_apdu_buffer + tx, &ctx->publicKey);
+		pubkeyToSiaAddress(G_io_apdu_buffer + tx, &publicKey);
 		tx += 76;
+
+		// prepare comparison screen
+		if (ctx->genAddr) {
+			os_memmove(ctx->typeStr, "Compare Address", 16);
+			os_memmove(ctx->fullStr, G_io_apdu_buffer + 32, 76);
+			ctx->fullStr[76] = '\0';
+		} else {
+			os_memmove(ctx->typeStr, "Compare Pubkey", 15);
+			bin2b64(ctx->fullStr, G_io_apdu_buffer, 32);
+		}
+		os_memmove(ctx->partialStr, ctx->fullStr, 12);
+		ctx->partialStr[12] = '\0';
+
+		// send response
 		G_io_apdu_buffer[tx++] = 0x90;
 		G_io_apdu_buffer[tx++] = 0x00;
 		io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
-		ui_idle();
+
+		// display comparison screen
+		ctx->displayIndex = 0;
+		UX_DISPLAY(ui_getPublicKey_compare, ui_prepro_getPublicKey_compare);
 		break;
 	}
 	return 0;
@@ -193,29 +247,26 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t da
 	}
 	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 
-	// read key index
-	uint32_t index = U4LE(dataBuffer, 0);
-	os_memmove(ctx->indexStr, "Key #", 5);
-	bin2dec(ctx->indexStr+5, index);
-
-	// derive public key from seed and index
-	deriveSiaKeypair(index, NULL, &ctx->publicKey);
+	// read key index and genAddr flag
+	ctx->keyIndex = U4LE(dataBuffer, 0);
+	ctx->genAddr = (p2 == P2_DISPLAY_ADDRESS);
 
 	if (p2 == P2_DISPLAY_ADDRESS) {
-		// convert key to Sia address
-		pubkeyToSiaAddress(ctx->addrStr, &ctx->publicKey);
-		os_memmove(ctx->typeStr, "Address", 8);
+		os_memmove(ctx->typeStr, "Generate Address", 17);
+		os_memmove(ctx->keyStr, "from Key #", 10);
+		int n = bin2dec(ctx->keyStr+10, ctx->keyIndex);
+		os_memmove(ctx->keyStr+10+n, "?", 2);
 	} else if (p2 == P2_DISPLAY_PUBKEY) {
-		// convert key to base64
-		uint8_t keyBytes[32];
-		extractPubkeyBytes(keyBytes, &ctx->publicKey);
-		bin2b64(ctx->addrStr, keyBytes, sizeof(keyBytes));
-		os_memmove(ctx->typeStr, "Public Key", 11);
+		os_memmove(ctx->typeStr, "Generate Public", 16);
+		os_memmove(ctx->keyStr, "Key #", 5);
+		int n = bin2dec(ctx->keyStr+5, ctx->keyIndex);
+		os_memmove(ctx->keyStr+5+n, "?", 2);
 	}
 
+	// display approval screen
 	ux_step = 0;
-	ux_step_count = 2;
-	UX_DISPLAY(ui_getPublicKey, ui_prepro_getPublicKey);
+	ux_step_count = 1;
+	UX_DISPLAY(ui_getPublicKey_approve, NULL);
 
 	*flags |= IO_ASYNCH_REPLY;
 }
@@ -237,12 +288,12 @@ const bagl_element_t ui_signHash_approve[] = {
 		0, 0, 0, NULL, NULL, NULL
 	},
 	{
-		{BAGL_LABELINE,  0x00,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		{BAGL_LABELINE, 0x00, 0, 12, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
 		"Sign this hash",
 		0, 0, 0, NULL, NULL, NULL
 	},
 	{
-		{BAGL_LABELINE,  0x00,   0,   26,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		{BAGL_LABELINE, 0x00, 0, 26, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
 		(char *)global.signHashContext.indexStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
@@ -288,12 +339,12 @@ const bagl_element_t ui_signHash_compare[] = {
 		0, 0, 0, NULL, NULL, NULL
 	},
 	{
-		{BAGL_LABELINE,  0x00,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		{BAGL_LABELINE, 0x00, 0, 12, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
 		"Compare Hashes",
 		0, 0, 0, NULL, NULL, NULL
 	},
 	{
-		{BAGL_LABELINE,  0x00,   0,   26,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		{BAGL_LABELINE,  0x00, 0, 26, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
 		(char *)global.signHashContext.partialHashStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
@@ -303,9 +354,8 @@ const bagl_element_t* ui_prepro_signHash_compare(const bagl_element_t *element) 
 	signHashContext_t *ctx = &global.signHashContext;
 
 	// don't display arrows if we're at the end
-	if (element->component.userid == 1 && ctx->displayIndex == 0) {
-		return 0;
-	} else if (element->component.userid == 2 && ctx->displayIndex == sizeof(ctx->hexHash)-12) {
+	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
+	    (element->component.userid == 2 && ctx->displayIndex == sizeof(ctx->hexHash)-12)) {
 		return 0;
 	}
 	return element;
