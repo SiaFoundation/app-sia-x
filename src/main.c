@@ -43,9 +43,11 @@ typedef struct getPublicKeyContext_t {
 typedef struct signHashContext_t {
 	uint32_t keyIndex;
 	uint8_t hash[32];
+	uint8_t hexHash[64];
+	uint8_t displayIndex;
 	// NUL-terminated strings for display
 	uint8_t indexStr[40]; // variable-length
-	uint8_t hashStr[65];
+	uint8_t partialHashStr[13];
 } signHashContext_t;
 
 union {
@@ -218,7 +220,7 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t da
 	*flags |= IO_ASYNCH_REPLY;
 }
 
-const bagl_element_t ui_signHash[] = {
+const bagl_element_t ui_signHash_approve[] = {
 	{
 		{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF, 0, 0},
 		NULL,
@@ -234,44 +236,20 @@ const bagl_element_t ui_signHash[] = {
 		NULL,
 		0, 0, 0, NULL, NULL, NULL
 	},
-
 	{
-		{BAGL_LABELINE,  0x01,   0,   19,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
-		"Sign this hash?",
+		{BAGL_LABELINE,  0x00,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		"Sign this hash",
 		0, 0, 0, NULL, NULL, NULL
 	},
-
 	{
-		{BAGL_LABELINE,  0x02,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		{BAGL_LABELINE,  0x00,   0,   26,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
 		(char *)global.signHashContext.indexStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_LABELINE, 0x02, 23, 26, 82, 12, 0x80 | 10, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 26},
-		(char *)global.signHashContext.hashStr,
 		0, 0, 0, NULL, NULL, NULL
 	},
 };
 
-const bagl_element_t* ui_prepro_signHash(const bagl_element_t *element) {
-	if (element->component.userid == 0)         return element; // this element is displayed on every step
-	if (element->component.userid != ux_step+1) return 0;       // this element is not displayed on this step
-
-	// set the redisplay interval and render this element
-	switch (element->component.userid) {
-	case 1:
-		// display "Sign this hash?" for 2 seconds
-		UX_CALLBACK_SET_INTERVAL(2000);
-		break;
-	case 2:
-		// cycle back to "Sign this hash?" after scrolling through hash
-		UX_CALLBACK_SET_INTERVAL(1000 + bagl_label_roundtrip_duration_ms(element, 7));
-		break;
-	}
-	return element;
-}
-
-unsigned int ui_signHash_button(unsigned int button_mask, unsigned int button_mask_counter) {
+unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
+	signHashContext_t *ctx = &global.signHashContext;
 	uint16_t tx = 0;
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
@@ -282,12 +260,81 @@ unsigned int ui_signHash_button(unsigned int button_mask, unsigned int button_ma
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
-		deriveAndSign(global.signHashContext.keyIndex, global.signHashContext.hash, G_io_apdu_buffer);
+		deriveAndSign(ctx->keyIndex, ctx->hash, G_io_apdu_buffer);
 		tx += 64;
 		G_io_apdu_buffer[tx++] = 0x90;
 		G_io_apdu_buffer[tx++] = 0x00;
 		io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
 		ui_idle();
+		break;
+	}
+	return 0;
+}
+
+const bagl_element_t ui_signHash_compare[] = {
+	{
+		{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF, 0, 0},
+		NULL,
+		0, 0, 0, NULL, NULL, NULL
+	},
+	{
+		{BAGL_ICON, 0x01, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_LEFT},
+		NULL,
+		0, 0, 0, NULL, NULL, NULL
+	},
+	{
+		{BAGL_ICON, 0x02, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_RIGHT},
+		NULL,
+		0, 0, 0, NULL, NULL, NULL
+	},
+	{
+		{BAGL_LABELINE,  0x00,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		"Compare Hashes",
+		0, 0, 0, NULL, NULL, NULL
+	},
+	{
+		{BAGL_LABELINE,  0x00,   0,   26,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_EXTRABOLD_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
+		(char *)global.signHashContext.partialHashStr,
+		0, 0, 0, NULL, NULL, NULL
+	},
+};
+
+const bagl_element_t* ui_prepro_signHash_compare(const bagl_element_t *element) {
+	signHashContext_t *ctx = &global.signHashContext;
+
+	// don't display arrows if we're at the end
+	if (element->component.userid == 1 && ctx->displayIndex == 0) {
+		return 0;
+	} else if (element->component.userid == 2 && ctx->displayIndex == sizeof(ctx->hexHash)-12) {
+		return 0;
+	}
+	return element;
+}
+
+unsigned int ui_signHash_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
+	signHashContext_t *ctx = &global.signHashContext;
+
+	switch (button_mask) {
+	case BUTTON_LEFT:
+	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
+		if (ctx->displayIndex > 0) {
+			ctx->displayIndex--;
+		}
+		os_memmove(ctx->partialHashStr, ctx->hexHash+ctx->displayIndex, 12);
+		UX_REDISPLAY();
+		break;
+
+	case BUTTON_RIGHT:
+	case BUTTON_EVT_FAST | BUTTON_RIGHT: // SEEK RIGHT
+		if (ctx->displayIndex < sizeof(ctx->hexHash)-12) {
+			ctx->displayIndex++;
+		}
+		os_memmove(ctx->partialHashStr, ctx->hexHash+ctx->displayIndex, 12);
+		UX_REDISPLAY();
+		break;
+
+	case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // PROCEED
+		UX_DISPLAY(ui_signHash_approve, NULL);
 		break;
 	}
 	return 0;
@@ -300,18 +347,24 @@ void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLe
 
 	// read key index
 	ctx->keyIndex = U4LE(dataBuffer, 0);
-	os_memmove(ctx->indexStr, "Key #", 5);
-	bin2dec(ctx->indexStr+5, ctx->keyIndex);
+	os_memmove(ctx->indexStr, "with key #", 10);
+	int n = bin2dec(ctx->indexStr+10, ctx->keyIndex);
+	os_memmove(ctx->indexStr+10+n, "?", 2);
+
 
 	// read hash to sign
 	os_memmove(ctx->hash, dataBuffer+4, 32);
 
-	// convert hash to hex so it can be displayed
-	bin2hex(ctx->hashStr, ctx->hash, 32);
+	// convert hash to hex and display the first 12 hex digits
+	bin2hex(ctx->hexHash, ctx->hash, 32);
+	os_memmove(ctx->partialHashStr, ctx->hexHash, 12);
+	ctx->partialHashStr[12] = '\0';
+	ctx->displayIndex = 0;
+
 
 	ux_step = 0;
-	ux_step_count = 2;
-	UX_DISPLAY(ui_signHash, ui_prepro_signHash);
+	ux_step_count = 1;
+	UX_DISPLAY(ui_signHash_compare, ui_prepro_signHash_compare);
 
 	*flags |= IO_ASYNCH_REPLY;
 }
