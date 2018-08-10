@@ -31,6 +31,7 @@
 #define SW_INVALID_PARAM 0x6B00
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+void io_exchange_with_code(uint16_t code, uint16_t tx);
 
 typedef struct {
 	uint32_t keyIndex;
@@ -156,9 +157,7 @@ unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, unsigned i
 	cx_ecfp_public_key_t publicKey;
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
-		G_io_apdu_buffer[tx++] = 0x69;
-		G_io_apdu_buffer[tx++] = 0x85;
-		io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+		io_exchange_with_code(SW_USER_REJECTED, tx);
 		ui_idle();
 		break;
 
@@ -183,9 +182,7 @@ unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, unsigned i
 		ctx->partialStr[12] = '\0';
 
 		// send response
-		G_io_apdu_buffer[tx++] = 0x90;
-		G_io_apdu_buffer[tx++] = 0x00;
-		io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+		io_exchange_with_code(SW_OK, tx);
 
 		// display comparison screen
 		ctx->displayIndex = 0;
@@ -241,18 +238,14 @@ unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int b
 	uint16_t tx = 0;
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
-		G_io_apdu_buffer[tx++] = 0x69;
-		G_io_apdu_buffer[tx++] = 0x85;
-		io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+		io_exchange_with_code(SW_USER_REJECTED, tx);
 		ui_idle();
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
 		deriveAndSign(ctx->keyIndex, ctx->hash, G_io_apdu_buffer);
 		tx += 64;
-		G_io_apdu_buffer[tx++] = 0x90;
-		G_io_apdu_buffer[tx++] = 0x00;
-		io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+		io_exchange_with_code(SW_OK, tx);
 		ui_idle();
 		break;
 	}
@@ -355,6 +348,12 @@ handler_fn_t* lookupHandler(uint8_t ins) {
 
 // Everything below this point is Ledger magic. Don't bother trying to
 // understand it.
+
+void io_exchange_with_code(uint16_t code, uint16_t tx) {
+	G_io_apdu_buffer[tx++] = code >> 8;
+	G_io_apdu_buffer[tx++] = code & 0xFF;
+	io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+}
 
 unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
 	switch (channel & ~(IO_FLAGS)) {
