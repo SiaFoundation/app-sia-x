@@ -87,34 +87,19 @@ void ui_idle(void) {
 	UX_MENU_DISPLAY(0, menu_main, NULL);
 }
 
-const bagl_element_t ui_getPublicKey_compare[] = {
-	{
-		{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF, 0, 0},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_ICON, 0x01, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_LEFT},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_ICON, 0x02, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_RIGHT},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_LABELINE, 0x00, 0, 12, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
-		(char *)global.getPublicKeyContext.typeStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_LABELINE, 0x00, 0, 26, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
-		(char *)global.getPublicKeyContext.partialStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
-};
+// helper macros for defining UI elements
+#define UI_BACKGROUND() {{BAGL_RECTANGLE,0,0,0,128,32,0,0,BAGL_FILL,0,0xFFFFFF,0,0},NULL,0,0,0,NULL,NULL,NULL}
+#define UI_ICON_LEFT(userid, glyph) {{BAGL_ICON,userid,3,12,7,7,0,0,0,0xFFFFFF,0,0,glyph},NULL,0,0,0,NULL,NULL,NULL}
+#define UI_ICON_RIGHT(userid, glyph) {{BAGL_ICON,userid,117,13,8,6,0,0,0,0xFFFFFF,0,0,glyph},NULL,0,0,0,NULL,NULL,NULL}
+#define UI_TEXT(userid, x, y, w, text) {{BAGL_LABELINE,userid,x,y,w,12,0,0,0,0xFFFFFF,0,BAGL_FONT_OPEN_SANS_REGULAR_11px|BAGL_FONT_ALIGNMENT_CENTER,0},(char *)text,0,0,0,NULL,NULL,NULL}
 
+const bagl_element_t ui_getPublicKey_compare[] = {
+	UI_BACKGROUND(),
+	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
+	UI_ICON_RIGHT(0x02, BAGL_GLYPH_ICON_RIGHT),
+	UI_TEXT(0x00, 0, 12, 128, global.getPublicKeyContext.typeStr),
+	UI_TEXT(0x00, 0, 26, 128, global.getPublicKeyContext.partialStr),
+};
 
 const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t *element) {
 	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
@@ -158,39 +143,11 @@ unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, unsigned i
 }
 
 const bagl_element_t ui_getPublicKey_approve[] = {
-	{
-		// component       userid, x,   y,  width, height, stroke, radius, fill,      fg,       bg,       font, icon
-		{  BAGL_RECTANGLE, 0x00,   0,   0,  128,   32,     0,      0,      BAGL_FILL, 0x000000, 0xFFFFFF, 0,    0   },
-		// text, if component is a BAGL_LABELINE
-		NULL,
-		// these fields only apply to the Ledger Blue
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font, icon
-		{  BAGL_ICON,      0x00,   3,   12,  7,     7,      0,      0,      0,         0xFFFFFF, 0x000000, 0,    BAGL_GLYPH_ICON_CROSS},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font, icon
-		{  BAGL_ICON,      0x00,   117, 13,  8,     6,      0,      0,      0,         0xFFFFFF, 0x000000, 0,    BAGL_GLYPH_ICON_CHECK},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-
-	{
-		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font,                                                            icon
-		{  BAGL_LABELINE,  0x00,   0,   12,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
-		(char *)global.getPublicKeyContext.typeStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		// component       userid, x,   y,   width, height, stroke, radius, fill,      fg,       bg,       font,                                                            icon
-		{  BAGL_LABELINE,  0x00,   0,   26,  128,   12,     0,      0,      0,         0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0   },
-		(char *)global.getPublicKeyContext.keyStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
+	UI_BACKGROUND(),
+	UI_ICON_LEFT(0x00, BAGL_GLYPH_ICON_CROSS),
+	UI_ICON_RIGHT(0x00, BAGL_GLYPH_ICON_CHECK),
+	UI_TEXT(0x00, 0, 12, 128, global.getPublicKeyContext.typeStr),
+	UI_TEXT(0x00, 0, 26, 128, global.getPublicKeyContext.keyStr),
 };
 
 unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
@@ -215,11 +172,11 @@ unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, unsigned i
 
 		// prepare comparison screen
 		if (ctx->genAddr) {
-			os_memmove(ctx->typeStr, "Compare Address", 16);
+			os_memmove(ctx->typeStr, "Compare:", 9);
 			os_memmove(ctx->fullStr, G_io_apdu_buffer + 32, 76);
 			ctx->fullStr[76] = '\0';
 		} else {
-			os_memmove(ctx->typeStr, "Compare Pubkey", 15);
+			os_memmove(ctx->typeStr, "Compare:", 9);
 			bin2b64(ctx->fullStr, G_io_apdu_buffer, 32);
 		}
 		os_memmove(ctx->partialStr, ctx->fullStr, 12);
@@ -272,31 +229,11 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t da
 }
 
 const bagl_element_t ui_signHash_approve[] = {
-	{
-		{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF, 0, 0},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_ICON, 0x00, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_CROSS},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_ICON, 0x00, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_CHECK},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_LABELINE, 0x00, 0, 12, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
-		"Sign this hash",
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_LABELINE, 0x00, 0, 26, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
-		(char *)global.signHashContext.indexStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
+	UI_BACKGROUND(),
+	UI_ICON_LEFT(0x00, BAGL_GLYPH_ICON_CROSS),
+	UI_ICON_RIGHT(0x00, BAGL_GLYPH_ICON_CHECK),
+	UI_TEXT(0x00, 0, 12, 128, "Sign this Hash"),
+	UI_TEXT(0x00, 0, 26, 128, global.signHashContext.indexStr),
 };
 
 unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
@@ -323,31 +260,11 @@ unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int b
 }
 
 const bagl_element_t ui_signHash_compare[] = {
-	{
-		{BAGL_RECTANGLE, 0x00, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0x000000, 0xFFFFFF, 0, 0},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_ICON, 0x01, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_LEFT},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_ICON, 0x02, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0x000000, 0, BAGL_GLYPH_ICON_RIGHT},
-		NULL,
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_LABELINE, 0x00, 0, 12, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
-		"Compare Hashes",
-		0, 0, 0, NULL, NULL, NULL
-	},
-	{
-		{BAGL_LABELINE,  0x00, 0, 26, 128, 12, 0, 0, 0, 0xFFFFFF, 0x000000, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0},
-		(char *)global.signHashContext.partialHashStr,
-		0, 0, 0, NULL, NULL, NULL
-	},
+	UI_BACKGROUND(),
+	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
+	UI_ICON_RIGHT(0x02, BAGL_GLYPH_ICON_RIGHT),
+	UI_TEXT(0x00, 0, 12, 128, "Compare Hashes:"),
+	UI_TEXT(0x00, 0, 26, 128, global.signHashContext.partialHashStr),
 };
 
 const bagl_element_t* ui_prepro_signHash_compare(const bagl_element_t *element) {
@@ -384,6 +301,7 @@ unsigned int ui_signHash_compare_button(unsigned int button_mask, unsigned int b
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // PROCEED
+		// display approval screen
 		UX_DISPLAY(ui_signHash_approve, NULL);
 		break;
 	}
@@ -397,10 +315,9 @@ void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLe
 
 	// read key index
 	ctx->keyIndex = U4LE(dataBuffer, 0);
-	os_memmove(ctx->indexStr, "with key #", 10);
+	os_memmove(ctx->indexStr, "with Key #", 10);
 	int n = bin2dec(ctx->indexStr+10, ctx->keyIndex);
 	os_memmove(ctx->indexStr+10+n, "?", 2);
-
 
 	// read hash to sign
 	os_memmove(ctx->hash, dataBuffer+4, 32);
@@ -411,7 +328,7 @@ void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLe
 	ctx->partialHashStr[12] = '\0';
 	ctx->displayIndex = 0;
 
-
+	// display comparison screen
 	ux_step = 0;
 	ux_step_count = 1;
 	UX_DISPLAY(ui_signHash_compare, ui_prepro_signHash_compare);
