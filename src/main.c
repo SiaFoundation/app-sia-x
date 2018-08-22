@@ -24,12 +24,16 @@
 #include "blake2b.h"
 #include "sia.h"
 
-#define P1_FIRST 0x00 // 1st packet of multi-packet transfer
-#define P1_MORE  0x80 // nth packet of multi-packet transfer
-
 // getPublicKey parameters
 #define P2_DISPLAY_ADDRESS 0x00
 #define P2_DISPLAY_PUBKEY  0x01
+
+// calcTxnHash parameters
+#define P1_FIRST 0x00 // 1st packet of multi-packet transfer
+#define P1_MORE  0x80 // nth packet of multi-packet transfer
+#define P2_DISPLAY_HASH 0x00 // display transaction hash
+#define P2_SIGN_HASH    0x01 // sign transaction hash
+
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 void io_exchange_with_code(uint16_t code, uint16_t tx);
@@ -56,6 +60,8 @@ typedef struct {
 } signHashContext_t;
 
 typedef struct {
+	uint32_t keyIndex;
+	bool sign;
 	uint8_t elemLen;
 	uint8_t displayIndex;
 	uint8_t elemPart; // screen index of elements
@@ -390,6 +396,32 @@ unsigned int ui_calcTxnHash_compare_button(unsigned int button_mask, unsigned in
 	return 0;
 }
 
+const bagl_element_t ui_calcTxnHash_sign[] = {
+	UI_BACKGROUND(),
+	UI_ICON_LEFT(0x00, BAGL_GLYPH_ICON_CROSS),
+	UI_ICON_RIGHT(0x00, BAGL_GLYPH_ICON_CHECK),
+	UI_TEXT(0x00, 0, 12, 128, "Sign this Txn"),
+	UI_TEXT(0x00, 0, 26, 128, global.calcTxnHashContext.fullStr),
+};
+
+unsigned int ui_calcTxnHash_sign_button(unsigned int button_mask, unsigned int button_mask_counter) {
+	calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
+
+	switch (button_mask) {
+	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
+		io_exchange_with_code(SW_USER_REJECTED, 0);
+		ui_idle();
+		break;
+
+	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
+		deriveAndSign(ctx->keyIndex, ctx->txn.sigHash, G_io_apdu_buffer);
+		io_exchange_with_code(SW_OK, 64);
+		ui_idle();
+		break;
+	}
+	return 0;
+}
+
 const bagl_element_t ui_calcTxnHash_elem[] = {
 	UI_BACKGROUND(),
 	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
@@ -510,15 +542,22 @@ unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigned int b
 			UX_REDISPLAY();
 			break;
 		case TXN_STATE_FINISHED:
-			// all elements have been displayed; send txn hash
-			os_memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
-			io_exchange_with_code(SW_OK, 32);
-			// display hash comparison screen
-			bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-			os_memmove(ctx->partialStr, ctx->fullStr, 12);
-			ctx->elemLen = 64;
-			ctx->displayIndex = 0;
-			UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);
+			// all elements have been displayed
+			if (ctx->sign) {
+				// display key index and prompt for approval
+				os_memmove(ctx->fullStr, "with Key #", 10);
+				bin2dec(ctx->fullStr+10, ctx->keyIndex);
+				UX_DISPLAY(ui_calcTxnHash_sign, NULL);
+			} else {
+				// send hash and display comparison screen
+				os_memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
+				io_exchange_with_code(SW_OK, 32);
+				bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
+				os_memmove(ctx->partialStr, ctx->fullStr, 12);
+				ctx->elemLen = 64;
+				ctx->displayIndex = 0;
+				UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);
+			}
 			break;
 		}
 		break;
@@ -533,10 +572,17 @@ unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigned int b
 void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx) {
 	calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
+	if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
+		THROW(SW_INVALID_PARAM);
+	}
+
 	if (p1 == P1_FIRST) {
-		// initialize ctx state
+		// initialize ctx state with P2 and key index
 		ctx->partialStr[12] = '\0';
 		ctx->elemPart = ctx->elemLen = ctx->displayIndex = 0;
+		ctx->sign = (p2 == P2_SIGN_HASH);
+		ctx->keyIndex = U4LE(dataBuffer, 0); // NOTE: ignored if !ctx->sign
+		dataBuffer += 4; dataLength -= 4;
 
 		// initialize txn decoder state with SigIndex
 		//
@@ -545,7 +591,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 		txn_init(&ctx->txn, U2LE(dataBuffer, 0));
 		dataBuffer += 2; dataLength -= 2;
 	} else if (p1 != P1_MORE) {
-		THROW(SW_INVALID_PARAM); // bad argument
+		THROW(SW_INVALID_PARAM); // after first exchange, p1 should always indicate more
 	}
 
 	// add new data to txn decoder
@@ -566,15 +612,23 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 		*flags |= IO_ASYNCH_REPLY;
 		break;
 	case TXN_STATE_FINISHED:
-		// all elements have been displayed; send txn hash
-		os_memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
-		io_exchange_with_code(SW_OK, 32);
-		// display hash comparison screen
-		bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-		os_memmove(ctx->partialStr, ctx->fullStr, 12);
-		ctx->elemLen = 64;
-		ctx->displayIndex = 0;
-		UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);
+		// all elements have been displayed
+		if (ctx->sign) {
+			// display key index and prompt for approval
+			os_memmove(ctx->fullStr, "with Key #", 10);
+			bin2dec(ctx->fullStr+10, ctx->keyIndex);
+			UX_DISPLAY(ui_calcTxnHash_sign, NULL);
+			*flags |= IO_ASYNCH_REPLY;
+		} else {
+			// send hash and display comparison screen
+			os_memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
+			io_exchange_with_code(SW_OK, 32);
+			bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
+			os_memmove(ctx->partialStr, ctx->fullStr, 12);
+			ctx->elemLen = 64;
+			ctx->displayIndex = 0;
+			UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);
+		}
 		break;
 	}
 }
