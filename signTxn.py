@@ -45,7 +45,7 @@ with open(args.txn, 'r') as txn_file:
 msg = struct.pack("<I", int(args.index)) + struct.pack("<H", int(args.sigIndex)) + msg
 
 try:
-	dongle = getDongle(True)
+	dongle = getDongle(False)
 	offset = 0
 	while offset <> len(msg):
 		if (len(msg) - offset) > 255:
