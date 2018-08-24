@@ -2,10 +2,10 @@
 
 This is the official Sia wallet app for the Ledger Nano S.
 
-This code is unpolished may contain bugs. However, it is feature-complete: you
-can generate Sia addresses, calculate transaction hashes, sign those hashes,
-and use those signatures to construct valid transactions. The Sia app is the
-most secure method currently available for performing these actions.
+This code is unpolished and may contain bugs. However, it is feature-complete:
+you can generate Sia addresses, calculate transaction hashes, sign those
+hashes, and use those signatures to construct valid transactions. The Sia app
+is the most secure method currently available for performing these actions.
 
 No binaries are provided at this time. To build and install the Sia app on
 your Ledger Nano S, follow Ledger's [setup instructions](https://ledger.readthedocs.io/en/latest/userspace/getting_started.html).
