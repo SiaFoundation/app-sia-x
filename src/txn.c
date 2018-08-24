@@ -40,8 +40,12 @@ static uint64_t readInt(txn_state_t *txn) {
 static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
 	uint64_t valLen = readInt(txn);
 	need_at_least(txn, valLen);
+	if (valLen > 16) {
+		// 16 bytes is enough to store up to 2^128, much larger than we could ever need.
+		THROW(TXN_STATE_ERR);
+	}
 	if (outVal) {
-		txn->valLen = cur2dec(outVal, txn->buf);
+		txn->valLen = cur2dec(outVal, txn->buf+txn->pos-8);
 	}
 	seek(txn, valLen);
 }
@@ -181,6 +185,12 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn) {
 		}
 	}
 	END_TRY;
+	if (txn->buflen + 255 > sizeof(txn->buf)) {
+		// we filled the buffer to max capacity, but there still wasn't enough
+		// to decode a full element. This generally means that the txn is
+		// corrupt in some way, since elements shouldn't be very large.
+		return TXN_STATE_ERR;
+	}
 	return result;
 }
 

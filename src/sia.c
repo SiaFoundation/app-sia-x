@@ -234,7 +234,7 @@ int cur2dec(uint8_t *out, uint8_t *cur) {
 	// as part of the first uint64. This is safe as long as the length prefix
 	// has only 1 non-zero byte, which should be enforced elsewhere.
 	uint64_t nat[32];
-	int len = (cur[0] / 8) + (cur[0] % 8 != 0);
+	int len = (cur[0] / 8) + ((cur[0] % 8) != 0);
 	cur += 8 - (len*8 - cur[0]);
 	for (int i = 0; i < len; i++) {
 		nat[len-i-1] = U8BE(cur, i*8);
