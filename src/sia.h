@@ -74,13 +74,6 @@ int bin2b64(uint8_t *out, uint8_t *in, uint64_t inlen);
 // final NUL byte. It returns the length of the string.
 int bin2dec(uint8_t *out, uint64_t n);
 
-// validCur return true if cur is a valid Sia-encoded currency value.
-bool validCur(uint8_t *cur);
-
-// cur2dec converts a Sia-encoded currency value to a decimal string and
-// appends a final NUL byte. It returns the length of the string.
-int cur2dec(uint8_t *out, uint8_t *cur);
-
 // cur2SC converts a decimal string from Hastings to Siacoins. It returns the
 // length of the string.
 int cur2SC(uint8_t *outVal, uint8_t decLen);
