@@ -8,11 +8,13 @@
 #include "sia.h"
 #include "ux.h"
 
+// get a pointer to getPublicKey's state variables
 extern union {
 	getPublicKeyContext_t getPublicKeyContext;
 	signHashContext_t signHashContext;
 	calcTxnHashContext_t calcTxnHashContext;
 } global;
+static getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 
 const bagl_element_t ui_getPublicKey_compare[] = {
 	UI_BACKGROUND(),
@@ -23,7 +25,6 @@ const bagl_element_t ui_getPublicKey_compare[] = {
 };
 
 const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t *element) {
-	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 	int fullSize = ctx->genAddr ? 76 : 44;
 
 	// don't display arrows if we're at the end
@@ -35,7 +36,6 @@ const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t *eleme
 }
 
 unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 	int fullSize = ctx->genAddr ? 76 : 44;
 	switch (button_mask) {
 	case BUTTON_LEFT:
@@ -72,7 +72,6 @@ const bagl_element_t ui_getPublicKey_approve[] = {
 };
 
 unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 	uint16_t tx = 0;
 	cx_ecfp_public_key_t publicKey;
 	switch (button_mask) {
@@ -123,7 +122,6 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t da
 	if ((p2 != P2_DISPLAY_ADDRESS) && (p2 != P2_DISPLAY_PUBKEY)) {
 		THROW(SW_INVALID_PARAM);
 	}
-	getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 
 	// read key index and genAddr flag
 	ctx->keyIndex = U4LE(dataBuffer, 0);

@@ -8,13 +8,13 @@
 #include "sia.h"
 #include "ux.h"
 
+// get a pointer to calcTxnHash's state variables
 extern union {
 	getPublicKeyContext_t getPublicKeyContext;
 	signHashContext_t signHashContext;
 	calcTxnHashContext_t calcTxnHashContext;
 } global;
-
-
+static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
 const bagl_element_t ui_calcTxnHash_compare[] = {
 	UI_BACKGROUND(),
@@ -25,8 +25,6 @@ const bagl_element_t ui_calcTxnHash_compare[] = {
 };
 
 const bagl_element_t* ui_prepro_calcTxnHash_compare(const bagl_element_t *element) {
-	calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
-
 	// don't display arrows if we're at the end
 	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
 	    (element->component.userid == 2 && ctx->displayIndex == ctx->elemLen-12)) {
@@ -36,8 +34,6 @@ const bagl_element_t* ui_prepro_calcTxnHash_compare(const bagl_element_t *elemen
 }
 
 unsigned int ui_calcTxnHash_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
-
 	switch (button_mask) {
 	case BUTTON_LEFT:
 	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
@@ -73,8 +69,6 @@ const bagl_element_t ui_calcTxnHash_sign[] = {
 };
 
 unsigned int ui_calcTxnHash_sign_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
-
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
 		io_exchange_with_code(SW_USER_REJECTED, 0);
@@ -99,8 +93,6 @@ const bagl_element_t ui_calcTxnHash_elem[] = {
 };
 
 const bagl_element_t* ui_prepro_calcTxnHash_elem(const bagl_element_t *element) {
-	calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
-
 	// don't display arrows if we're at the end
 	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
 	    (element->component.userid == 2 && ((ctx->elemLen < 12) || (ctx->displayIndex == ctx->elemLen-12)))) {
@@ -164,10 +156,7 @@ void fmtTxnElem(calcTxnHashContext_t *ctx) {
 	ctx->displayIndex = 0;
 }
 
-
 unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
-
 	switch (button_mask) {
 	case BUTTON_LEFT:
 	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
@@ -244,8 +233,6 @@ unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigned int b
 // key. The transaction is processed in a streaming fashion and displayed
 // piece-wise to the user.
 void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx) {
-	calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
-
 	if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
 		THROW(SW_INVALID_PARAM);
 	}

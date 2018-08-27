@@ -8,11 +8,13 @@
 #include "sia.h"
 #include "ux.h"
 
+// get a pointer to signHash's state variables
 extern union {
 	getPublicKeyContext_t getPublicKeyContext;
 	signHashContext_t signHashContext;
 	calcTxnHashContext_t calcTxnHashContext;
 } global;
+static signHashContext_t *ctx = &global.signHashContext;
 
 const bagl_element_t ui_signHash_approve[] = {
 	UI_BACKGROUND(),
@@ -23,7 +25,6 @@ const bagl_element_t ui_signHash_approve[] = {
 };
 
 unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	signHashContext_t *ctx = &global.signHashContext;
 	uint16_t tx = 0;
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
@@ -50,8 +51,6 @@ const bagl_element_t ui_signHash_compare[] = {
 };
 
 const bagl_element_t* ui_prepro_signHash_compare(const bagl_element_t *element) {
-	signHashContext_t *ctx = &global.signHashContext;
-
 	// don't display arrows if we're at the end
 	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
 	    (element->component.userid == 2 && ctx->displayIndex == sizeof(ctx->hexHash)-12)) {
@@ -61,8 +60,6 @@ const bagl_element_t* ui_prepro_signHash_compare(const bagl_element_t *element) 
 }
 
 unsigned int ui_signHash_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	signHashContext_t *ctx = &global.signHashContext;
-
 	switch (button_mask) {
 	case BUTTON_LEFT:
 	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
@@ -93,8 +90,6 @@ unsigned int ui_signHash_compare_button(unsigned int button_mask, unsigned int b
 // handleSignHash reads a key index and a hash, stores them in the global
 // context, and displays the signHash UI.
 void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx) {
-	signHashContext_t *ctx = &global.signHashContext;
-
 	// read key index
 	ctx->keyIndex = U4LE(dataBuffer, 0);
 	os_memmove(ctx->indexStr, "with Key #", 10);
