@@ -82,13 +82,6 @@ union {
 // magic global variable implicitly referenced by the UX_ macros
 ux_state_t ux;
 
-// some screens have multiple "steps." ux_step selects which step is currently
-// displayed; only bagl_elements whose userid field matches ux_step are
-// displayed. ux_step_count is the total number of steps, so that we can cycle
-// via ux_step = (ux_step+1) % ux_step_count.
-unsigned int ux_step;
-unsigned int ux_step_count;
-
 const ux_menu_entry_t menu_main[];
 
 const ux_menu_entry_t menu_about[] = {
@@ -238,8 +231,6 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t da
 	}
 
 	// display approval screen
-	ux_step = 0;
-	ux_step_count = 1;
 	UX_DISPLAY(ui_getPublicKey_approve, NULL);
 
 	*flags |= IO_ASYNCH_REPLY;
@@ -342,8 +333,6 @@ void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLe
 	ctx->displayIndex = 0;
 
 	// display comparison screen
-	ux_step = 0;
-	ux_step_count = 1;
 	UX_DISPLAY(ui_signHash_compare, ui_prepro_signHash_compare);
 
 	*flags |= IO_ASYNCH_REPLY;
@@ -780,16 +769,7 @@ unsigned char io_event(unsigned char channel) {
 		break;
 
 	case SEPROXYHAL_TAG_TICKER_EVENT:
-		UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
-			if (UX_ALLOWED) {
-				if (ux_step_count) {
-					// prepare next screen
-					ux_step = (ux_step + 1) % ux_step_count;
-					// redisplay screen
-					UX_REDISPLAY();
-				}
-			}
-		});
+		UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
 		break;
 
 	default:
