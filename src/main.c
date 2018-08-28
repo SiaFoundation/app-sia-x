@@ -26,36 +26,36 @@
 #include "sia.h"
 #include "ux.h"
 
-// each command has some state associated with it that sticks around for the
-// life of the command. We use a union to save memory, taking advantage of the
-// fact that only one command is executed at a time.
-union {
-	getPublicKeyContext_t getPublicKeyContext;
-	signHashContext_t signHashContext;
-	calcTxnHashContext_t calcTxnHashContext;
-} global;
-
-// magic global variable implicitly referenced by the UX_ macros
+// global variables declared in ux.h
+commandContext global;
 ux_state_t ux;
 
 // define the main menu
-const ux_menu_entry_t menu_main[];
+static const ux_menu_entry_t menu_main[];
 
-const ux_menu_entry_t menu_about[] = {
+static const ux_menu_entry_t menu_about[] = {
 	{NULL, NULL, 0, NULL, "Version", APPVERSION, 0, 0},
 	{menu_main, NULL, 2, &C_icon_back, "Back", NULL, 61, 40},
 	UX_MENU_END
 };
 
-const ux_menu_entry_t menu_main[] = {
+static const ux_menu_entry_t menu_main[] = {
 	{NULL, NULL, 0, NULL, "Waiting for", "commands...", 0, 0},
 	{menu_about, NULL, 0, NULL, "About", NULL, 0, 0},
 	{NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
 	UX_MENU_END
 };
 
+// ui_idle displays the main menu
 void ui_idle(void) {
 	UX_MENU_DISPLAY(0, menu_main, NULL);
+}
+
+// io_exchange_with_code is a helper function for sending APDUs.
+void io_exchange_with_code(uint16_t code, uint16_t tx) {
+	G_io_apdu_buffer[tx++] = code >> 8;
+	G_io_apdu_buffer[tx++] = code & 0xFF;
+	io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
 }
 
 // The APDU protocol uses a single-byte instruction code (INS) to specify
@@ -72,7 +72,7 @@ handler_fn_t handleGetPublicKey;
 handler_fn_t handleSignHash;
 handler_fn_t handleCalcTxnHash;
 
-handler_fn_t* lookupHandler(uint8_t ins) {
+static handler_fn_t* lookupHandler(uint8_t ins) {
 	switch (ins) {
 	case INS_GET_PUBLIC_KEY: return handleGetPublicKey;
 	case INS_SIGN_HASH:      return handleSignHash;
@@ -83,12 +83,6 @@ handler_fn_t* lookupHandler(uint8_t ins) {
 
 // Everything below this point is Ledger magic. Don't bother trying to
 // understand it.
-
-void io_exchange_with_code(uint16_t code, uint16_t tx) {
-	G_io_apdu_buffer[tx++] = code >> 8;
-	G_io_apdu_buffer[tx++] = code & 0xFF;
-	io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
-}
 
 unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
 	switch (channel & ~(IO_FLAGS)) {
@@ -119,7 +113,7 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
 #define OFFSET_LC    0x04
 #define OFFSET_CDATA 0x05
 
-void sia_main(void) {
+static void sia_main(void) {
 	volatile unsigned int rx = 0;
 	volatile unsigned int tx = 0;
 	volatile unsigned int flags = 0;
@@ -220,7 +214,7 @@ unsigned char io_event(unsigned char channel) {
 	return 1;
 }
 
-void app_exit(void) {
+static void app_exit(void) {
 	BEGIN_TRY_L(exit) {
 		TRY_L(exit) {
 			os_sched_exit(-1);

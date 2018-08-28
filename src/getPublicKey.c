@@ -9,14 +9,9 @@
 #include "ux.h"
 
 // get a pointer to getPublicKey's state variables
-extern union {
-	getPublicKeyContext_t getPublicKeyContext;
-	signHashContext_t signHashContext;
-	calcTxnHashContext_t calcTxnHashContext;
-} global;
 static getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 
-const bagl_element_t ui_getPublicKey_compare[] = {
+static const bagl_element_t ui_getPublicKey_compare[] = {
 	UI_BACKGROUND(),
 	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
 	UI_ICON_RIGHT(0x02, BAGL_GLYPH_ICON_RIGHT),
@@ -24,7 +19,7 @@ const bagl_element_t ui_getPublicKey_compare[] = {
 	UI_TEXT(0x00, 0, 26, 128, global.getPublicKeyContext.partialStr),
 };
 
-const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t *element) {
+static const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t *element) {
 	int fullSize = ctx->genAddr ? 76 : 44;
 
 	// don't display arrows if we're at the end
@@ -35,7 +30,7 @@ const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t *eleme
 	return element;
 }
 
-unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
+static unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
 	int fullSize = ctx->genAddr ? 76 : 44;
 	switch (button_mask) {
 	case BUTTON_LEFT:
@@ -63,7 +58,7 @@ unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, unsigned i
 	return 0;
 }
 
-const bagl_element_t ui_getPublicKey_approve[] = {
+static const bagl_element_t ui_getPublicKey_approve[] = {
 	UI_BACKGROUND(),
 	UI_ICON_LEFT(0x00, BAGL_GLYPH_ICON_CROSS),
 	UI_ICON_RIGHT(0x00, BAGL_GLYPH_ICON_CHECK),
@@ -71,7 +66,7 @@ const bagl_element_t ui_getPublicKey_approve[] = {
 	UI_TEXT(0x00, 0, 26, 128, global.getPublicKeyContext.keyStr),
 };
 
-unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
+static unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
 	uint16_t tx = 0;
 	cx_ecfp_public_key_t publicKey;
 	switch (button_mask) {

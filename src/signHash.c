@@ -9,14 +9,9 @@
 #include "ux.h"
 
 // get a pointer to signHash's state variables
-extern union {
-	getPublicKeyContext_t getPublicKeyContext;
-	signHashContext_t signHashContext;
-	calcTxnHashContext_t calcTxnHashContext;
-} global;
 static signHashContext_t *ctx = &global.signHashContext;
 
-const bagl_element_t ui_signHash_approve[] = {
+static const bagl_element_t ui_signHash_approve[] = {
 	UI_BACKGROUND(),
 	UI_ICON_LEFT(0x00, BAGL_GLYPH_ICON_CROSS),
 	UI_ICON_RIGHT(0x00, BAGL_GLYPH_ICON_CHECK),
@@ -24,7 +19,7 @@ const bagl_element_t ui_signHash_approve[] = {
 	UI_TEXT(0x00, 0, 26, 128, global.signHashContext.indexStr),
 };
 
-unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
+static unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
 	uint16_t tx = 0;
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
@@ -42,7 +37,7 @@ unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int b
 	return 0;
 }
 
-const bagl_element_t ui_signHash_compare[] = {
+static const bagl_element_t ui_signHash_compare[] = {
 	UI_BACKGROUND(),
 	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
 	UI_ICON_RIGHT(0x02, BAGL_GLYPH_ICON_RIGHT),
@@ -50,7 +45,7 @@ const bagl_element_t ui_signHash_compare[] = {
 	UI_TEXT(0x00, 0, 26, 128, global.signHashContext.partialHashStr),
 };
 
-const bagl_element_t* ui_prepro_signHash_compare(const bagl_element_t *element) {
+static const bagl_element_t* ui_prepro_signHash_compare(const bagl_element_t *element) {
 	// don't display arrows if we're at the end
 	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
 	    (element->component.userid == 2 && ctx->displayIndex == sizeof(ctx->hexHash)-12)) {
@@ -59,7 +54,7 @@ const bagl_element_t* ui_prepro_signHash_compare(const bagl_element_t *element) 
 	return element;
 }
 
-unsigned int ui_signHash_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
+static unsigned int ui_signHash_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
 	switch (button_mask) {
 	case BUTTON_LEFT:
 	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT

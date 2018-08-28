@@ -9,14 +9,9 @@
 #include "ux.h"
 
 // get a pointer to calcTxnHash's state variables
-extern union {
-	getPublicKeyContext_t getPublicKeyContext;
-	signHashContext_t signHashContext;
-	calcTxnHashContext_t calcTxnHashContext;
-} global;
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
-const bagl_element_t ui_calcTxnHash_compare[] = {
+static const bagl_element_t ui_calcTxnHash_compare[] = {
 	UI_BACKGROUND(),
 	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
 	UI_ICON_RIGHT(0x02, BAGL_GLYPH_ICON_RIGHT),
@@ -24,7 +19,7 @@ const bagl_element_t ui_calcTxnHash_compare[] = {
 	UI_TEXT(0x00, 0, 26, 128, global.calcTxnHashContext.partialStr),
 };
 
-const bagl_element_t* ui_prepro_calcTxnHash_compare(const bagl_element_t *element) {
+static const bagl_element_t* ui_prepro_calcTxnHash_compare(const bagl_element_t *element) {
 	// don't display arrows if we're at the end
 	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
 	    (element->component.userid == 2 && ctx->displayIndex == ctx->elemLen-12)) {
@@ -33,7 +28,7 @@ const bagl_element_t* ui_prepro_calcTxnHash_compare(const bagl_element_t *elemen
 	return element;
 }
 
-unsigned int ui_calcTxnHash_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
+static unsigned int ui_calcTxnHash_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
 	switch (button_mask) {
 	case BUTTON_LEFT:
 	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
@@ -60,7 +55,7 @@ unsigned int ui_calcTxnHash_compare_button(unsigned int button_mask, unsigned in
 	return 0;
 }
 
-const bagl_element_t ui_calcTxnHash_sign[] = {
+static const bagl_element_t ui_calcTxnHash_sign[] = {
 	UI_BACKGROUND(),
 	UI_ICON_LEFT(0x00, BAGL_GLYPH_ICON_CROSS),
 	UI_ICON_RIGHT(0x00, BAGL_GLYPH_ICON_CHECK),
@@ -68,7 +63,7 @@ const bagl_element_t ui_calcTxnHash_sign[] = {
 	UI_TEXT(0x00, 0, 26, 128, global.calcTxnHashContext.fullStr),
 };
 
-unsigned int ui_calcTxnHash_sign_button(unsigned int button_mask, unsigned int button_mask_counter) {
+static unsigned int ui_calcTxnHash_sign_button(unsigned int button_mask, unsigned int button_mask_counter) {
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
 		io_exchange_with_code(SW_USER_REJECTED, 0);
@@ -84,7 +79,7 @@ unsigned int ui_calcTxnHash_sign_button(unsigned int button_mask, unsigned int b
 	return 0;
 }
 
-const bagl_element_t ui_calcTxnHash_elem[] = {
+static const bagl_element_t ui_calcTxnHash_elem[] = {
 	UI_BACKGROUND(),
 	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
 	UI_ICON_RIGHT(0x02, BAGL_GLYPH_ICON_RIGHT),
@@ -92,7 +87,7 @@ const bagl_element_t ui_calcTxnHash_elem[] = {
 	UI_TEXT(0x00, 0, 26, 128, global.calcTxnHashContext.partialStr),
 };
 
-const bagl_element_t* ui_prepro_calcTxnHash_elem(const bagl_element_t *element) {
+static const bagl_element_t* ui_prepro_calcTxnHash_elem(const bagl_element_t *element) {
 	// don't display arrows if we're at the end
 	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
 	    (element->component.userid == 2 && ((ctx->elemLen < 12) || (ctx->displayIndex == ctx->elemLen-12)))) {
@@ -102,7 +97,7 @@ const bagl_element_t* ui_prepro_calcTxnHash_elem(const bagl_element_t *element) 
 }
 
 // helper function for displayNextElem
-void fmtTxnElem(calcTxnHashContext_t *ctx) {
+static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 	txn_state_t *txn = &ctx->txn;
 
 	switch (txn->elemType) {
@@ -156,7 +151,7 @@ void fmtTxnElem(calcTxnHashContext_t *ctx) {
 	ctx->displayIndex = 0;
 }
 
-unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigned int button_mask_counter) {
+static unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigned int button_mask_counter) {
 	switch (button_mask) {
 	case BUTTON_LEFT:
 	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
