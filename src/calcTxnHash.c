@@ -1,9 +1,7 @@
 #include <stdint.h>
 #include <stdbool.h>
-#include "os.h"
-#include "cx.h"
-#include "os_io_seproxyhal.h"
-#include "glyphs.h"
+#include <os.h>
+#include <os_io_seproxyhal.h>
 #include "blake2b.h"
 #include "sia.h"
 #include "ux.h"

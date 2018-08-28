@@ -18,9 +18,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "os.h"
-#include "cx.h"
-#include "os_io_seproxyhal.h"
+#include <os_io_seproxyhal.h>
 #include "glyphs.h"
 #include "blake2b.h"
 #include "sia.h"
