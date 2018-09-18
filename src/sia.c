@@ -83,7 +83,6 @@ void pubkeyToSiaAddress(uint8_t *dst, cx_ecfp_public_key_t *publicKey) {
 	sigsrequiredData[0] = leafHashPrefix;
 	sigsrequiredData[1] = 1;
 
-
 	// To calculate the Merkle root, we need a buffer large enough to hold two
 	// hashes plus a special leading byte.
 	uint8_t merkleData[65];

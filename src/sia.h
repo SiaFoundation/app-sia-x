@@ -4,6 +4,7 @@
 #define SW_USER_REJECTED 0x6985
 #define SW_OK            0x9000
 
+// macros for converting raw bytes to uint64_t
 #define U8BE(buf, off) (((uint64_t)(U4BE(buf, off))     << 32) | ((uint64_t)(U4BE(buf, off + 4)) & 0xFFFFFFFF))
 #define U8LE(buf, off) (((uint64_t)(U4LE(buf, off + 4)) << 32) | ((uint64_t)(U4LE(buf, off))     & 0xFFFFFFFF))
 
@@ -32,7 +33,7 @@ typedef enum {
 // txn_state_t is a helper object for computing the SigHash of a streamed
 // transaction.
 typedef struct {
-	uint8_t buf[510]; // holds raw tx bytes; large enough for two reads
+	uint8_t buf[510]; // holds raw tx bytes; large enough for two 0xFF reads
 	uint16_t buflen;  // number of valid bytes in buf
 	uint16_t pos;     // mid-decode offset; reset to 0 after each elem
 

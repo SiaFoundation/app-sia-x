@@ -35,7 +35,7 @@ func (hf *hidFramer) Reset() {
 
 func (hf *hidFramer) Write(p []byte) (int, error) {
 	if DEBUG {
-		fmt.Println("HID =>", hex.EncodeToString(p))
+		fmt.Println("HID <=", hex.EncodeToString(p))
 	}
 	// split into 64-byte chunks
 	chunk := make([]byte, 64)
@@ -123,7 +123,7 @@ func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
 	resp := make([]byte, respLen)
 	_, err := io.ReadFull(af.hf, resp)
 	if DEBUG {
-		fmt.Println("HID <=", hex.EncodeToString(resp))
+		fmt.Println("HID =>", hex.EncodeToString(resp))
 	}
 	return resp, err
 }
