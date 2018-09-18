@@ -125,8 +125,9 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 			ctx->elemPart++;
 		} else {
 			os_memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
+			os_memmove(ctx->fullStr+txn->valLen, " SF", 4);
 			os_memmove(ctx->partialStr, ctx->fullStr, 12);
-			ctx->elemLen = txn->valLen;
+			ctx->elemLen = txn->valLen + 4;
 			ctx->elemPart = 0;
 		}
 		break;
