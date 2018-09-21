@@ -69,7 +69,7 @@ static unsigned int ui_calcTxnHash_sign_button(unsigned int button_mask, unsigne
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
-		deriveAndSign(ctx->keyIndex, ctx->txn.sigHash, G_io_apdu_buffer);
+		deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
 		io_exchange_with_code(SW_OK, 64);
 		ui_idle();
 		break;
@@ -109,7 +109,7 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 			ctx->elemPart++;
 		} else {
 			os_memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
-			ctx->elemLen = cur2SC(ctx->fullStr, txn->valLen);
+			ctx->elemLen = formatSC(ctx->fullStr, txn->valLen);
 			os_memmove(ctx->partialStr, ctx->fullStr, 12);
 			ctx->elemPart = 0;
 		}
@@ -136,7 +136,7 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 		os_memmove(ctx->labelStr, "Miner Fee #", 11);
 		bin2dec(ctx->labelStr+11, txn->sliceIndex);
 		os_memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
-		ctx->elemLen = cur2SC(ctx->fullStr, txn->valLen);
+		ctx->elemLen = formatSC(ctx->fullStr, txn->valLen);
 		os_memmove(ctx->partialStr, ctx->fullStr, 12);
 		ctx->elemPart = 0;
 		break;

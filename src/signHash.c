@@ -18,17 +18,15 @@ static const bagl_element_t ui_signHash_approve[] = {
 };
 
 static unsigned int ui_signHash_approve_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	uint16_t tx = 0;
 	switch (button_mask) {
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
-		io_exchange_with_code(SW_USER_REJECTED, tx);
+		io_exchange_with_code(SW_USER_REJECTED, 0);
 		ui_idle();
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
-		deriveAndSign(ctx->keyIndex, ctx->hash, G_io_apdu_buffer);
-		tx += 64;
-		io_exchange_with_code(SW_OK, tx);
+		deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->hash);
+		io_exchange_with_code(SW_OK, 64);
 		ui_idle();
 		break;
 	}

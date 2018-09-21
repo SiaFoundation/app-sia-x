@@ -25,32 +25,32 @@ void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp
 	os_memset(&pk, 0, sizeof(pk));
 }
 
-void extractPubkeyBytes(unsigned char *keyBytes, cx_ecfp_public_key_t *publicKey) {
+void extractPubkeyBytes(unsigned char *dst, cx_ecfp_public_key_t *publicKey) {
 	for (int i = 0; i < 32; i++) {
-		keyBytes[i] = publicKey->W[64 - i];
+		dst[i] = publicKey->W[64 - i];
 	}
 	if (publicKey->W[32] & 1) {
-		keyBytes[31] |= 0x80;
+		dst[31] |= 0x80;
 	}
 }
 
-void deriveAndSign(uint32_t index, const uint8_t *hash, uint8_t *signature) {
+void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
 	cx_ecfp_private_key_t privateKey;
 	deriveSiaKeypair(index, &privateKey, NULL);
-	cx_eddsa_sign(&privateKey, CX_RND_RFC6979 | CX_LAST, CX_SHA512, hash, 32, NULL, 0, signature, 64, NULL);
+	cx_eddsa_sign(&privateKey, CX_RND_RFC6979 | CX_LAST, CX_SHA512, hash, 32, NULL, 0, dst, 64, NULL);
 	os_memset(&privateKey, 0, sizeof(privateKey));
 }
 
-void bin2hex(uint8_t *out, uint8_t *in, uint64_t inlen) {
+void bin2hex(uint8_t *dst, uint8_t *data, uint64_t inlen) {
 	static uint8_t const hex[] = "0123456789abcdef";
 	for (uint64_t i = 0; i < inlen; i++) {
-		out[2*i+0] = hex[(in[i]>>4) & 0x0F];
-		out[2*i+1] = hex[(in[i]>>0) & 0x0F];
+		dst[2*i+0] = hex[(data[i]>>4) & 0x0F];
+		dst[2*i+1] = hex[(data[i]>>0) & 0x0F];
 	}
-	out[2*inlen] = '\0';
+	dst[2*inlen] = '\0';
 }
 
-void pubkeyToSiaAddress(uint8_t *out, cx_ecfp_public_key_t *publicKey) {
+void pubkeyToSiaAddress(uint8_t *dst, cx_ecfp_public_key_t *publicKey) {
 	// A Sia address is the Merkle root of a set of unlock conditions.
 	// For a "standard" address, the unlock conditions are:
 	//
@@ -104,14 +104,14 @@ void pubkeyToSiaAddress(uint8_t *out, cx_ecfp_public_key_t *publicKey) {
 	blake2b(checksum, sizeof(checksum), merkleData+1, 32);
 
 	// convert the hash+checksum to hex
-	bin2hex(out, merkleData+1, 32);
-	bin2hex(out+64, checksum, sizeof(checksum));
+	bin2hex(dst, merkleData+1, 32);
+	bin2hex(dst+64, checksum, sizeof(checksum));
 }
 
-int bin2dec(uint8_t *out, uint64_t n) {
+int bin2dec(uint8_t *dst, uint64_t n) {
 	if (n == 0) {
-		out[0] = '0';
-		out[1] = '\0';
+		dst[0] = '0';
+		dst[1] = '\0';
 		return 1;
 	}
 	// determine final length
@@ -121,17 +121,17 @@ int bin2dec(uint8_t *out, uint64_t n) {
 	}
 	// write digits in big-endian order
 	for (int i = len-1; i >= 0; i--) {
-		out[i] = (n % 10) + '0';
+		dst[i] = (n % 10) + '0';
 		n /= 10;
 	}
-	out[len] = '\0';
+	dst[len] = '\0';
 	return len;
 }
 
-int bin2b64(uint8_t *out, uint8_t *in, uint64_t inlen) {
+int bin2b64(uint8_t *dst, uint8_t *data, uint64_t inlen) {
     static uint8_t const b64Std[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     if (inlen == 0) {
-        out[0] = '\0';
+        dst[0] = '\0';
         return 0;
     }
 
@@ -140,11 +140,11 @@ int bin2b64(uint8_t *out, uint8_t *in, uint64_t inlen) {
     int n = (inlen / 3) * 3;
     while (si < n) {
         // convert 3 binary bytes into 4 base64 bytes
-        uint32_t val = in[si+0]<<16 | in[si+1]<<8 | in[si+2];
-        out[di+0] = b64Std[val>>18&0x3F];
-        out[di+1] = b64Std[val>>12&0x3F];
-        out[di+2] = b64Std[val>>6 &0x3F];
-        out[di+3] = b64Std[val>>0 &0x3F];
+        uint32_t val = data[si+0]<<16 | data[si+1]<<8 | data[si+2];
+        dst[di+0] = b64Std[val>>18&0x3F];
+        dst[di+1] = b64Std[val>>12&0x3F];
+        dst[di+2] = b64Std[val>>6 &0x3F];
+        dst[di+3] = b64Std[val>>0 &0x3F];
         si += 3;
         di += 4;
     }
@@ -153,43 +153,43 @@ int bin2b64(uint8_t *out, uint8_t *in, uint64_t inlen) {
     if (remain == 0) {
         return di;
     }
-    uint32_t val = in[si+0] << 16;
+    uint32_t val = data[si+0] << 16;
     if (remain == 2) {
-        val |= in[si+1] << 8;
+        val |= data[si+1] << 8;
     }
-    out[di+0] = b64Std[val>>18&0x3F];
-    out[di+1] = b64Std[val>>12&0x3F];
+    dst[di+0] = b64Std[val>>18&0x3F];
+    dst[di+1] = b64Std[val>>12&0x3F];
     if (remain == 2) {
-        out[di+2] = b64Std[val>>6&0x3F];
-        out[di+3] = '=';
+        dst[di+2] = b64Std[val>>6&0x3F];
+        dst[di+3] = '=';
     } else if (remain == 1) {
-        out[di+2] = '=';
-        out[di+3] = '=';
+        dst[di+2] = '=';
+        dst[di+3] = '=';
     }
     di += 4;
-    out[di] = '\0';
+    dst[di] = '\0';
     return di;
 }
 
 #define SC_ZEROS 24
 
-int cur2SC(uint8_t *outVal, uint8_t decLen) {
+int formatSC(uint8_t *buf, uint8_t decLen) {
 	if (decLen < SC_ZEROS+1) {
 		// if < 1 SC, pad with leading zeros
-		os_memmove(outVal + (SC_ZEROS-decLen)+2, outVal, decLen+1);
-		os_memset(outVal, '0', SC_ZEROS+2-decLen);
+		os_memmove(buf + (SC_ZEROS-decLen)+2, buf, decLen+1);
+		os_memset(buf, '0', SC_ZEROS+2-decLen);
 		decLen = SC_ZEROS + 1;
 	} else {
-		os_memmove(outVal + (decLen-SC_ZEROS)+2, outVal + (decLen-SC_ZEROS+1), SC_ZEROS+1);
+		os_memmove(buf + (decLen-SC_ZEROS)+2, buf + (decLen-SC_ZEROS+1), SC_ZEROS+1);
 	}
 	// add decimal point, trim trailing zeros, and add units
-	outVal[decLen-SC_ZEROS] = '.';
-	while (decLen > 0 && outVal[decLen] == '0') {
+	buf[decLen-SC_ZEROS] = '.';
+	while (decLen > 0 && buf[decLen] == '0') {
 		decLen--;
 	}
-	if (outVal[decLen] == '.') {
+	if (buf[decLen] == '.') {
 		decLen--;
 	}
-	os_memmove(outVal + decLen + 1, " SC", 4);
+	os_memmove(buf + decLen + 1, " SC", 4);
 	return decLen + 4;
 }
