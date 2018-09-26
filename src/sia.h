@@ -10,7 +10,7 @@
 
 // txnDecoderState_e indicates a transaction decoder status
 typedef enum {
-    TXN_STATE_ERR,      // invalid transaction
+    TXN_STATE_ERR = 1,  // invalid transaction (NOTE: it's illegal to THROW(0))
     TXN_STATE_PARTIAL,  // no elements have been fully decoded yet
     TXN_STATE_READY,    // at least one element is fully decoded
     TXN_STATE_FINISHED, // reached end of transaction

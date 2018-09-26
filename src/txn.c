@@ -197,6 +197,12 @@ static void __txn_next_elem(txn_state_t *txn) {
 		txn->sliceIndex = 0;
 		txn->elemType++;
 		advance(txn);
+
+		// if we've reached the TransactionSignatures, check that sigIndex is
+		// a valid index
+		if ((txn->elemType == TXN_ELEM_TXN_SIG) && (txn->sigIndex >= txn->sliceLen)) {
+			THROW(TXN_STATE_ERR);
+		}
 	}
 
 	switch (txn->elemType) {
@@ -261,8 +267,15 @@ static void __txn_next_elem(txn_state_t *txn) {
 	}
 }
 
+
 txnDecoderState_e txn_next_elem(txn_state_t *txn) {
-	txnDecoderState_e result;
+	// Like many transaction decoders, we use exceptions to jump out of deep
+	// call stacks when we encounter an error. There are two important rules
+	// for Ledger exceptions: declare modified variables as volatile, and do
+	// not THROW(0). Presumably, 0 is the sentinel value for "no exception
+	// thrown." So be very careful when throwing enums, since enums start at 0
+	// by default.
+	volatile txnDecoderState_e result;
 	BEGIN_TRY {
 		TRY {
 			// read until we reach a displayable element or the end of the buffer
