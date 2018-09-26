@@ -16,6 +16,7 @@ import (
 	"strconv"
 
 	"github.com/karalabe/hid"
+	"gitlab.com/NebulousLabs/Sia/crypto"
 	"gitlab.com/NebulousLabs/Sia/types"
 	"lukechampine.com/flagg"
 )
@@ -414,7 +415,8 @@ func main() {
 		if err != nil {
 			log.Fatalln("Couldn't get public key:", err)
 		}
-		fmt.Println(base64.StdEncoding.EncodeToString(pubkey[:]))
+		pk := types.Ed25519PublicKey(crypto.PublicKey(pubkey))
+		fmt.Println(pk.String())
 
 	case hashCmd:
 		if len(args) != 2 {

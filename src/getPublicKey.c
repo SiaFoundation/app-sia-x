@@ -45,7 +45,7 @@ static const bagl_element_t ui_getPublicKey_compare[] = {
 // is that, since public keys and addresses have different lengths, checking
 // for the end of the string is slightly more complicated.
 static const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t *element) {
-	int fullSize = ctx->genAddr ? 76 : 44;
+	int fullSize = ctx->genAddr ? 76 : 64;
 	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
 	    (element->component.userid == 2 && ctx->displayIndex == fullSize-12)) {
 		return NULL;
@@ -56,7 +56,7 @@ static const bagl_element_t* ui_prepro_getPublicKey_compare(const bagl_element_t
 // Define the button handler for the comparison screen. Again, this is nearly
 // identical to the signHash comparison button handler.
 static unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	int fullSize = ctx->genAddr ? 76 : 44;
+	int fullSize = ctx->genAddr ? 76 : 64;
 	switch (button_mask) {
 	case BUTTON_LEFT:
 	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
@@ -144,7 +144,7 @@ static unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, uns
 		} else {
 			// The APDU buffer contains the raw bytes of the public key, so
 			// first we need to convert to a human-readable form.
-			bin2b64(ctx->fullStr, G_io_apdu_buffer, 32);
+			bin2hex(ctx->fullStr, G_io_apdu_buffer, 32);
 		}
 		os_memmove(ctx->partialStr, ctx->fullStr, 12);
 		ctx->partialStr[12] = '\0';

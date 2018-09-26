@@ -67,10 +67,6 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn);
 // bin2hex converts binary to hex and appends a final NUL byte.
 void bin2hex(uint8_t *dst, uint8_t *data, uint64_t inlen);
 
-// bin2b64 converts binary to base64 (standard encoding) and appends a final
-// NUL byte. It returns the length of the string.
-int bin2b64(uint8_t *dst, uint8_t *data, uint64_t inlen);
-
 // bin2dec converts an unsigned integer to a decimal string and appends a
 // final NUL byte. It returns the length of the string.
 int bin2dec(uint8_t *dst, uint64_t n);

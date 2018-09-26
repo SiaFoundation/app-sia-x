@@ -127,49 +127,6 @@ int bin2dec(uint8_t *dst, uint64_t n) {
 	return len;
 }
 
-int bin2b64(uint8_t *dst, uint8_t *data, uint64_t inlen) {
-    static uint8_t const b64Std[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    if (inlen == 0) {
-        dst[0] = '\0';
-        return 0;
-    }
-
-    int di = 0;
-    int si = 0;
-    int n = (inlen / 3) * 3;
-    while (si < n) {
-        // convert 3 binary bytes into 4 base64 bytes
-        uint32_t val = data[si+0]<<16 | data[si+1]<<8 | data[si+2];
-        dst[di+0] = b64Std[val>>18&0x3F];
-        dst[di+1] = b64Std[val>>12&0x3F];
-        dst[di+2] = b64Std[val>>6 &0x3F];
-        dst[di+3] = b64Std[val>>0 &0x3F];
-        si += 3;
-        di += 4;
-    }
-    // encode remaining bytes
-    int remain = inlen - si;
-    if (remain == 0) {
-        return di;
-    }
-    uint32_t val = data[si+0] << 16;
-    if (remain == 2) {
-        val |= data[si+1] << 8;
-    }
-    dst[di+0] = b64Std[val>>18&0x3F];
-    dst[di+1] = b64Std[val>>12&0x3F];
-    if (remain == 2) {
-        dst[di+2] = b64Std[val>>6&0x3F];
-        dst[di+3] = '=';
-    } else if (remain == 1) {
-        dst[di+2] = '=';
-        dst[di+3] = '=';
-    }
-    di += 4;
-    dst[di] = '\0';
-    return di;
-}
-
 #define SC_ZEROS 24
 
 int formatSC(uint8_t *buf, uint8_t decLen) {
