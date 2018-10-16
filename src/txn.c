@@ -183,6 +183,11 @@ static void readCoveredFields(txn_state_t *txn) {
 	}
 }
 
+static void addReplayProtection(blake2b_state *S) {
+	static uint8_t const replayPrefix[] = {0};
+	blake2b_update(S, replayPrefix, 1);
+}
+
 // throws txnDecoderState_e
 static void __txn_next_elem(txn_state_t *txn) {
 	// if we're on a slice boundary, read the next length prefix and bump the
@@ -233,6 +238,7 @@ static void __txn_next_elem(txn_state_t *txn) {
 	case TXN_ELEM_SC_INPUT:
 		readHash(txn, NULL);       // ParentID
 		readUnlockConditions(txn); // UnlockConditions
+		addReplayProtection(&txn->blake);
 		advance(txn);
 		txn->sliceIndex++;
 		return;
@@ -241,6 +247,7 @@ static void __txn_next_elem(txn_state_t *txn) {
 		readHash(txn, NULL);       // ParentID
 		readUnlockConditions(txn); // UnlockConditions
 		readHash(txn, NULL);       // ClaimUnlockHash
+		addReplayProtection(&txn->blake);
 		advance(txn);
 		txn->sliceIndex++;
 		return;
