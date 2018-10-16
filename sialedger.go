@@ -16,7 +16,6 @@ import (
 	"strconv"
 
 	"github.com/karalabe/hid"
-	"gitlab.com/NebulousLabs/Sia/crypto"
 	"gitlab.com/NebulousLabs/Sia/types"
 	"lukechampine.com/flagg"
 )
@@ -141,8 +140,10 @@ func (c ErrCode) Error() string {
 
 const codeSuccess = 0x9000
 const codeUserRejected = 0x6985
+const codeInvalidParam = 0x6b01
 
 var errUserRejected = errors.New("user denied request")
+var errInvalidParam = errors.New("invalid request parameters")
 
 func (n *NanoS) Exchange(cmd byte, p1, p2 byte, data []byte) (resp []byte, err error) {
 	resp, err = n.device.Exchange(APDU{
@@ -159,9 +160,14 @@ func (n *NanoS) Exchange(cmd byte, p1, p2 byte, data []byte) (resp []byte, err e
 	}
 	code := binary.BigEndian.Uint16(resp[len(resp)-2:])
 	resp = resp[:len(resp)-2]
-	if code == codeUserRejected {
+	switch code {
+	case codeSuccess:
+		err = nil
+	case codeUserRejected:
 		err = errUserRejected
-	} else if code != codeSuccess {
+	case codeInvalidParam:
+		err = errInvalidParam
+	default:
 		err = ErrCode(code)
 	}
 	return
@@ -414,7 +420,7 @@ func main() {
 		if err != nil {
 			log.Fatalln("Couldn't get public key:", err)
 		}
-		pk := types.Ed25519PublicKey(crypto.PublicKey(pubkey))
+		pk := types.Ed25519PublicKey(pubkey)
 		fmt.Println(pk.String())
 
 	case hashCmd:

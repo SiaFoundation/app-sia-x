@@ -238,7 +238,9 @@ static void __txn_next_elem(txn_state_t *txn) {
 	case TXN_ELEM_SC_INPUT:
 		readHash(txn, NULL);       // ParentID
 		readUnlockConditions(txn); // UnlockConditions
-		addReplayProtection(&txn->blake);
+		if (txn->asicChain) {
+			addReplayProtection(&txn->blake);
+		}
 		advance(txn);
 		txn->sliceIndex++;
 		return;
@@ -247,7 +249,9 @@ static void __txn_next_elem(txn_state_t *txn) {
 		readHash(txn, NULL);       // ParentID
 		readUnlockConditions(txn); // UnlockConditions
 		readHash(txn, NULL);       // ClaimUnlockHash
-		addReplayProtection(&txn->blake);
+		if (txn->asicChain) {
+			addReplayProtection(&txn->blake);
+		}
 		advance(txn);
 		txn->sliceIndex++;
 		return;
@@ -306,11 +310,12 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn) {
 	return result;
 }
 
-void txn_init(txn_state_t *txn, uint16_t sigIndex) {
+void txn_init(txn_state_t *txn, uint16_t sigIndex, bool asicChain) {
 	os_memset(txn, 0, sizeof(txn_state_t));
 	txn->buflen = txn->pos = txn->sliceIndex = txn->sliceLen = txn->valLen = 0;
 	txn->elemType = -1; // first increment brings it to SC_INPUT
 	txn->sigIndex = sigIndex;
+	txn->asicChain = asicChain;
 
 	// initialize hash state
 	blake2b_init(&txn->blake);

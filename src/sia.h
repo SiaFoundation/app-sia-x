@@ -42,6 +42,7 @@ typedef struct {
 	uint16_t sliceIndex;    // offset within current element slice
 
 	uint16_t sigIndex;   // index of TxnSig being computed
+	bool asicChain;      // apply ASIC hardfork replay protection
 	blake2b_state blake; // hash state
 	uint8_t sigHash[32]; // buffer to hold final hash
 
@@ -52,7 +53,7 @@ typedef struct {
 
 // txn_init initializes a transaction decoder, preparing it to calculate the
 // requested SigHash.
-void txn_init(txn_state_t *txn, uint16_t sigIndex);
+void txn_init(txn_state_t *txn, uint16_t sigIndex, bool asicChain);
 
 // txn_update adds data to a transaction decoder.
 void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);
