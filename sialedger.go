@@ -131,7 +131,6 @@ func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
 
 type NanoS struct {
 	device *apduFramer
-	buf    [64]byte
 }
 
 type ErrCode uint16
