@@ -174,9 +174,10 @@ func (n *NanoS) Exchange(cmd byte, p1, p2 byte, data []byte) (resp []byte, err e
 }
 
 const (
-	cmdGetPublicKey = 0x01
-	cmdSignHash     = 0x02
-	cmdCalcTxnHash  = 0x04
+	cmdGetVersion   = 0x01
+	cmdGetPublicKey = 0x02
+	cmdSignHash     = 0x04
+	cmdCalcTxnHash  = 0x08
 
 	p1First = 0x00
 	p1More  = 0x80
@@ -186,6 +187,16 @@ const (
 	p2DisplayHash    = 0x00
 	p2SignHash       = 0x01
 )
+
+func (n *NanoS) GetVersion() (version string, err error) {
+	resp, err := n.Exchange(cmdGetVersion, 0, 0, nil)
+	if err != nil {
+		return "", err
+	} else if len(resp) != 3 {
+		return "", errors.New("version has wrong length")
+	}
+	return fmt.Sprintf("v%d.%d.%d", resp[0], resp[1], resp[2]), nil
+}
 
 func (n *NanoS) GetPublicKey(index uint32) (pubkey [32]byte, err error) {
 	encIndex := make([]byte, 4)
@@ -326,8 +337,13 @@ Actions:
 `
 	debugUsage = `print raw APDU exchanges`
 
-	versionUsage = rootUsage
-	addrUsage    = `Usage:
+	versionUsage = `Usage:
+	sialedger version
+
+Prints the version of the sialedger binary, as well as the version reported by
+the Sia Ledger Nano S app (if available).
+`
+	addrUsage = `Usage:
 	sialedger addr [key index]
 
 Generates an address using the public key with the specified index.
@@ -398,7 +414,17 @@ func main() {
 		}
 		fallthrough
 	case versionCmd:
-		log.Fatalf("%s v0.1.0\n", os.Args[0])
+		// try to get Nano S app version
+		var appVersion string
+		nanos, err := OpenNanoS()
+		if err != nil {
+			appVersion = "(could not connect to Nano S)"
+		} else if appVersion, err = nanos.GetVersion(); err != nil {
+			appVersion = "(could not read version from Nano S: " + err.Error() + ")"
+		}
+
+		fmt.Printf("%s v0.1.0\n", os.Args[0])
+		fmt.Println("Nano S app version:", appVersion)
 
 	case addrCmd:
 		if len(args) != 1 {
