@@ -246,6 +246,8 @@ static unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigne
 				ctx->displayIndex = 0;
 				UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);
 			}
+			// Reset the initialization state.
+			ctx->initialized = false;
 			break;
 		}
 		break;
@@ -269,6 +271,16 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 	}
 
 	if (p1 == P1_FIRST) {
+		// If this is the first packet of a transaction, the transaction
+		// context must not already be initialized. (Otherwise, an attacker
+		// could fool the user by concatenating two transactions.)
+		//
+		// NOTE: ctx->initialized is set to false when the Sia app loads.
+		if (ctx->initialized) {
+			THROW(SW_IMPROPER_INIT);
+		}
+		ctx->initialized = true;
+
 		// If this is the first packet, it will include the key index and sig
 		// index in addition to the transaction data. Use these to initialize
 		// the ctx and the transaction decoder.
@@ -287,6 +299,12 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 		// Initialize some display-related variables.
 		ctx->partialStr[12] = '\0';
 		ctx->elemPart = ctx->elemLen = ctx->displayIndex = 0;
+	} else {
+		// If this is not P1_FIRST, the transaction must have been
+		// initialized previously.
+		if (!ctx->initialized) {
+			THROW(SW_IMPROPER_INIT);
+		}
 	}
 
 	// Add the new data to transaction decoder.
@@ -401,6 +419,8 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 			// concerned, it's simpler to think of UX_DISPLAY as sending just
 			// a single Status.
 		}
+		// Reset the initialization state.
+		ctx->initialized = false;
 		break;
 	}
 }

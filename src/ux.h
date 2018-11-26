@@ -36,6 +36,7 @@ typedef struct {
 	uint8_t labelStr[40]; // variable length
 	uint8_t fullStr[128]; // variable length
 	uint8_t partialStr[13];
+	bool initialized; // protects against certain attacks
 } calcTxnHashContext_t;
 
 // To save memory, we store all the context types in a single global union,

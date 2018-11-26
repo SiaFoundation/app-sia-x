@@ -230,6 +230,9 @@ static handler_fn_t* lookupHandler(uint8_t ins) {
 // will be caught, converted to an error code, appended to the response APDU,
 // and sent in the next io_exchange call.
 static void sia_main(void) {
+	// Mark the transaction context as uninitialized.
+	global.calcTxnHashContext.initialized = false;
+
 	volatile unsigned int rx = 0;
 	volatile unsigned int tx = 0;
 	volatile unsigned int flags = 0;
