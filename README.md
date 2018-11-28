@@ -1,4 +1,4 @@
-# nanos-app-sia
+# ledger-app-sia
 
 This is the official Sia wallet app for the Ledger Nano S.
 
