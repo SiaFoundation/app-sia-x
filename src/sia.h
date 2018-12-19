@@ -44,7 +44,7 @@ typedef struct {
 
 	uint16_t sigIndex;   // index of TxnSig being computed
 	bool asicChain;      // apply ASIC hardfork replay protection
-	blake2b_state blake; // hash state
+	cx_blake2b_t blake;  // hash state
 	uint8_t sigHash[32]; // buffer to hold final hash
 
 	uint8_t outVal[128]; // most-recently-seen currency value, in decimal

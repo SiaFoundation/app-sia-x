@@ -183,7 +183,7 @@ static void readCoveredFields(txn_state_t *txn) {
 	}
 }
 
-static void addReplayProtection(blake2b_state *S) {
+static void addReplayProtection(cx_blake2b_t *S) {
 	static uint8_t const replayPrefix[] = {0};
 	blake2b_update(S, replayPrefix, 1);
 }
