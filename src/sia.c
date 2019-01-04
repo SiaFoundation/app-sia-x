@@ -11,7 +11,7 @@ void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp
 
 	// bip32 path for 44'/93'/n'/0'/0'
 	uint32_t bip32Path[] = {44 | 0x80000000, 93 | 0x80000000, index | 0x80000000, 0x80000000, 0x80000000};
-	os_perso_derive_node_bip32(CX_CURVE_Ed25519, bip32Path, 5, keySeed, NULL);
+	os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, keySeed, NULL, NULL, 0);
 
 	cx_ecfp_init_private_key(CX_CURVE_Ed25519, keySeed, sizeof(keySeed), &pk);
 	if (publicKey) {
