@@ -136,7 +136,7 @@ int formatSC(uint8_t *buf, uint8_t decLen) {
 		os_memset(buf, '0', SC_ZEROS+2-decLen);
 		decLen = SC_ZEROS + 1;
 	} else {
-		os_memmove(buf + (decLen-SC_ZEROS)+2, buf + (decLen-SC_ZEROS+1), SC_ZEROS+1);
+		os_memmove(buf + (decLen-SC_ZEROS)+1, buf + (decLen-SC_ZEROS), SC_ZEROS+1);
 	}
 	// add decimal point, trim trailing zeros, and add units
 	buf[decLen-SC_ZEROS] = '.';
