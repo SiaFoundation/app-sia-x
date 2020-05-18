@@ -17,13 +17,13 @@
 //
 // Keep this description in mind as you read through the implementation.
 
-#include <stdint.h>
-#include <stdbool.h>
 #include <os.h>
 #include <os_io_seproxyhal.h>
 #include "blake2b.h"
 #include "sia.h"
-#include "ux.h"
+#include "sia_ux.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 // Get a pointer to signHash's state variables. This is purely for
 // convenience, so that we can refer to these variables concisely from any

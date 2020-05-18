@@ -24,7 +24,7 @@
 #include <os_io_seproxyhal.h>
 #include "blake2b.h"
 #include "sia.h"
-#include "ux.h"
+#include "sia_ux.h"
 
 // Get a pointer to getPublicKey's state variables.
 static getPublicKeyContext_t *ctx = &global.getPublicKeyContext;

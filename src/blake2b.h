@@ -1,3 +1,5 @@
+#include "cx.h"
+
 // blake2b_init initializes a 256-bit unkeyed BLAKE2B hash.
 void blake2b_init(cx_blake2b_t *S);
 // blake2b_update adds data to a BLAKE2B hash.
