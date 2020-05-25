@@ -102,13 +102,14 @@
 // - the main loop invokes command handlers, which display screens and set button handlers
 // - button handlers switch between screens and reply to the computer
 
-#include <stdint.h>
-#include <stdbool.h>
+#include "os.h"
 #include <os_io_seproxyhal.h>
 #include "glyphs.h"
 #include "blake2b.h"
 #include "sia.h"
-#include "ux.h"
+#include "sia_ux.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 // You may notice that this file includes blake2b.h despite doing no hashing.
 // This is because the Sia app uses the Plan 9 convention for header files:

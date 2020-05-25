@@ -25,7 +25,7 @@
 #include <os_io_seproxyhal.h>
 #include "blake2b.h"
 #include "sia.h"
-#include "ux.h"
+#include "sia_ux.h"
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
