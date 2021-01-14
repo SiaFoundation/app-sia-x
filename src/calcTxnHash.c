@@ -288,10 +288,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 		dataBuffer += 4; dataLength -= 4;
 		uint16_t sigIndex = U2LE(dataBuffer, 0);
 		dataBuffer += 2; dataLength -= 2;
-		// The official Sia Nano S app only signs transactions on the forked
-		// chain. To use the app on dissenting chains, pass false instead.
-		const bool useASICHardforkChain = true;
-		txn_init(&ctx->txn, sigIndex, useASICHardforkChain);
+		txn_init(&ctx->txn, sigIndex);
 
 		// Set ctx->sign according to P2.
 		ctx->sign = (p2 & P2_SIGN_HASH);
