@@ -184,7 +184,10 @@ static void readCoveredFields(txn_state_t *txn) {
 }
 
 static void addReplayProtection(cx_blake2b_t *S) {
-	static uint8_t const replayPrefix[] = {0};
+	// The official Sia Nano S app only signs transactions on the
+	// Foundation-supported chain. To use the app on a different chain,
+	// recompile the app with a different replayPrefix.
+	static uint8_t const replayPrefix[] = {1};
 	blake2b_update(S, replayPrefix, 1);
 }
 
@@ -238,9 +241,7 @@ static void __txn_next_elem(txn_state_t *txn) {
 	case TXN_ELEM_SC_INPUT:
 		readHash(txn, NULL);       // ParentID
 		readUnlockConditions(txn); // UnlockConditions
-		if (txn->asicChain) {
-			addReplayProtection(&txn->blake);
-		}
+		addReplayProtection(&txn->blake);
 		advance(txn);
 		txn->sliceIndex++;
 		return;
@@ -249,9 +250,7 @@ static void __txn_next_elem(txn_state_t *txn) {
 		readHash(txn, NULL);       // ParentID
 		readUnlockConditions(txn); // UnlockConditions
 		readHash(txn, NULL);       // ClaimUnlockHash
-		if (txn->asicChain) {
-			addReplayProtection(&txn->blake);
-		}
+		addReplayProtection(&txn->blake);
 		advance(txn);
 		txn->sliceIndex++;
 		return;
@@ -310,12 +309,11 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn) {
 	return result;
 }
 
-void txn_init(txn_state_t *txn, uint16_t sigIndex, bool asicChain) {
+void txn_init(txn_state_t *txn, uint16_t sigIndex) {
 	os_memset(txn, 0, sizeof(txn_state_t));
 	txn->buflen = txn->pos = txn->sliceIndex = txn->sliceLen = txn->valLen = 0;
 	txn->elemType = -1; // first increment brings it to SC_INPUT
 	txn->sigIndex = sigIndex;
-	txn->asicChain = asicChain;
 
 	// initialize hash state
 	blake2b_init(&txn->blake);
