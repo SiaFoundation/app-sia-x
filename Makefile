@@ -26,7 +26,7 @@ include $(BOLOS_SDK)/Makefile.defines
 
 APPNAME    = Sia
 ICONNAME   = nanos_app_sia.gif
-APPVERSION = 0.4.2
+APPVERSION = 0.4.3
 
 # The --path argument here restricts which BIP32 paths the app is allowed to derive.
 APP_LOAD_PARAMS = --appFlags 0x40 --path "44'/93'" --curve secp256k1 --curve ed25519 $(COMMON_LOAD_PARAMS)
@@ -56,7 +56,7 @@ DEFINES += APPVERSION=\"$(APPVERSION)\"
 ##############
 
 CC := $(CLANGPATH)clang
-CFLAGS += -O3 -Os
+CFLAGS += -O3 -Os -I/usr/include
 
 AS := $(GCCPATH)arm-none-eabi-gcc
 LD := $(GCCPATH)arm-none-eabi-gcc
