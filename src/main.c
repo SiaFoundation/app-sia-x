@@ -108,6 +108,7 @@
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
+#include <ux.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -122,7 +123,8 @@
 // because multiple files include ux.h; they need to be defined in exactly one
 // place. See ux.h for their descriptions.
 commandContext global;
-ux_state_t ux;
+ux_state_t G_ux;
+bolos_ux_params_t G_ux_params;
 
 // Here we define the main menu, using the Ledger-provided menu API. This menu
 // turns out to be fairly unimportant for Nano S apps, since commands are sent

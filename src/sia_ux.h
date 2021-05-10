@@ -1,4 +1,4 @@
-#include "ux.h"
+#include <ux.h>
 
 // Each command has some state associated with it that sticks around for the
 // life of the command. A separate context_t struct should be defined for each
@@ -49,10 +49,6 @@ typedef union {
 	calcTxnHashContext_t calcTxnHashContext;
 } commandContext;
 extern commandContext global;
-
-// ux is a magic global variable implicitly referenced by the UX_ macros. Apps
-// should never need to reference it directly.
-extern ux_state_t ux;
 
 // These are helper macros for defining UI elements. There are four basic UI
 // elements: the background, which is a black rectangle that fills the whole

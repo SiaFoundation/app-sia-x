@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <os.h>
 #include <os_io_seproxyhal.h>
+#include <ux.h>
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"

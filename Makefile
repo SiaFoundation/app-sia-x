@@ -30,8 +30,9 @@ APPVERSION = 0.4.3
 
 # The --path argument here restricts which BIP32 paths the app is allowed to derive.
 APP_LOAD_PARAMS = --appFlags 0x40 --path "44'/93'" --curve secp256k1 --curve ed25519 $(COMMON_LOAD_PARAMS)
-APP_SOURCE_PATH = src
-SDK_SOURCE_PATH = lib_stusb lib_stusb_impl
+APP_SOURCE_PATH += src
+SDK_SOURCE_PATH += lib_stusb lib_stusb_impl
+SDK_SOURCE_PATH += lib_ux
 
 all: default
 
@@ -46,10 +47,17 @@ delete:
 ############
 
 DEFINES += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=128
-DEFINES += HAVE_BAGL HAVE_SPRINTF
+DEFINES += HAVE_SPRINTF
 DEFINES += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=7 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
-DEFINES   += HAVE_LEGACY_PID
+DEFINES += HAVE_LEGACY_PID
+DEFINES += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
+DEFINES += HAVE_UX_LEGACY HAVE_UX_FLOW
 DEFINES += APPVERSION=\"$(APPVERSION)\"
+
+DEFINES += HAVE_BAGL_ELLIPSIS
+DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
 
 ##############
 #  Compiler  #
@@ -61,7 +69,7 @@ CFLAGS += -O3 -Os -I/usr/include
 AS := $(GCCPATH)arm-none-eabi-gcc
 LD := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS += -O3 -Os
-LDLIBS += -lm -lgcc -lc
+LDLIBS += -lm -lgcc -lc 
 
 ##################
 #  Dependencies  #
