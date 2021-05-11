@@ -1,19 +1,19 @@
 # ledger-app-sia-x
 
-This is an unofficial Sia wallet app for the Ledger Nano X.
+This is an unofficial Sia wallet app for the Ledger Nano S/X.
 
-When installed on a Nano X, the app allows you to generate Sia addresses,
+When installed on a Nano S/X, the app allows you to generate Sia addresses,
 calculate transaction hashes, sign those hashes, and use those signatures to
 construct valid transactions. The Sia app is the most secure method currently
 available for performing these actions.
 
-This code also serves as a walkthrough for writing your own Ledger Nano X app.
+This code also serves as a walkthrough for writing your own Ledger Nano S/X app.
 The code is heavily commented and describes both the high-level architecture
-and low-level implementation details of Nano X app development. Begin by
+and low-level implementation details of Nano S/X app development. Begin by
 reading `src/main.c`, and the comments will tell you which files to read next.
 
 No binaries are provided at this time. To build and install the Sia app on
-your Ledger Nano X, follow Ledger's [setup instructions](https://ledger.readthedocs.io/en/latest/userspace/getting_started.html).
+your Ledger Nano S/X, follow Ledger's [setup instructions](https://ledger.readthedocs.io/en/latest/userspace/setup.html).
 
 After the app is installed, build the `sialedger.go` binary to interact with
 the device. `./sialedger --help` will print a list of commands.
@@ -25,11 +25,11 @@ to generate addresses and sign transactions using the app.
 
 ## Security Model
 
-The attack surface for using the Sia wallet app on a Ledger Nano X comprises
-the Sia app itself, the system firmware running on the Nano X, the computer
-that the Nano X is connected to, and posession/control of the device. For our
+The attack surface for using the Sia wallet app on a Ledger Nano S/X comprises
+the Sia app itself, the system firmware running on the Nano S/X, the computer
+that the Nano S/X is connected to, and posession/control of the device. For our
 purposes, the app only needs to ensure its own correctness and protect the
-user from the computer that the Nano X is connected to. Other attack surfaces
+user from the computer that the Nano S/X is connected to. Other attack surfaces
 are beyond our control; we assume that the user physically controls the
 device, is not running malicious/buggy software on the device, and follows
 proper security protocols. The goal of the Sia app is to achieve perfect
@@ -43,9 +43,9 @@ Specifically, the computer can do the following:
 1. Lie to the user about which actions it is performing. *Example: the user
    runs `./sialedger addr 1`, but the computer secretly runs `./sialedger addr 2`
    instead.*
-2. Lie to the user about what it received from the Nano X. *Example: the Nano
+2. Lie to the user about what it received from the Nano S/X. *Example: the Nano
    S generates address X, but the computer displays address Y.*
-3. Exfiltrate data supplied by the user or the Nano X. *Example: the user
+3. Exfiltrate data supplied by the user or the Nano S/X. *Example: the user
    generates addresses A and B; the computer "phones home" to report that A and
    B are owned by the same person.*
 4. Refuse to comply with the user's requests. *Example: the user runs
@@ -58,7 +58,7 @@ certain actions. Type-1 and type-2 actions, on the other hand, are much more
 dangerous, and can be trivially exploited to steal the user's coins.
 
 To combat these attacks, apps must make use of the embedded display on the
-Nano X. If data sent to/from the Nano X is displayed on the screen, the user
+Nano S/X. If data sent to/from the Nano S/X is displayed on the screen, the user
 can verify that the computer is not lying about what it sent or received. In
 the interest of user-friendliness, we would like to display as little
 information as much as possible, but each omission brings with it the risk of
