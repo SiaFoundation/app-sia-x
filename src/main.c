@@ -413,14 +413,14 @@ __attribute__((section(".boot"))) int main(void) {
 			TRY {
 				io_seproxyhal_init();
 
-#if defined(TARGET_NANOX)
+#ifdef TARGET_NANOX
 				G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
 #endif
 
 				USB_power(0);
 				USB_power(1);
 
-#if defined(TARGET_NANOX)
+#ifdef TARGET_NANOX
 				BLE_power(0, NULL);
 				BLE_power(1, "Nano X");
 #endif

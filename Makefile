@@ -29,7 +29,13 @@ ICONNAME   = nanos_app_sia.gif
 APPVERSION = 0.4.3
 
 # The --path argument here restricts which BIP32 paths the app is allowed to derive.
-APP_LOAD_PARAMS = --appFlags 0x40 --path "44'/93'" --curve secp256k1 --curve ed25519 $(COMMON_LOAD_PARAMS)
+APP_LOAD_PARAMS = --path "44'/93'" --curve secp256k1 --curve ed25519 $(COMMON_LOAD_PARAMS)
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+APP_LOAD_PARAMS += --appFlags 0x40
+else ifeq ($(TARGET_NAME),TARGET_NANOX)
+APP_LOAD_PARAMS += --appFlags 0x240
+endif
+
 APP_SOURCE_PATH += src
 SDK_SOURCE_PATH += lib_stusb lib_stusb_impl
 SDK_SOURCE_PATH += lib_ux
