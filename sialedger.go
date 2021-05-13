@@ -128,7 +128,7 @@ func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
 	return resp, err
 }
 
-type NanoS struct {
+type Nano struct {
 	device *apduFramer
 }
 
@@ -145,7 +145,7 @@ const codeInvalidParam = 0x6b01
 var errUserRejected = errors.New("user denied request")
 var errInvalidParam = errors.New("invalid request parameters")
 
-func (n *NanoS) Exchange(cmd byte, p1, p2 byte, data []byte) (resp []byte, err error) {
+func (n *Nano) Exchange(cmd byte, p1, p2 byte, data []byte) (resp []byte, err error) {
 	resp, err = n.device.Exchange(APDU{
 		CLA:     0xe0,
 		INS:     cmd,
@@ -188,7 +188,7 @@ const (
 	p2SignHash       = 0x01
 )
 
-func (n *NanoS) GetVersion() (version string, err error) {
+func (n *Nano) GetVersion() (version string, err error) {
 	resp, err := n.Exchange(cmdGetVersion, 0, 0, nil)
 	if err != nil {
 		return "", err
@@ -198,7 +198,7 @@ func (n *NanoS) GetVersion() (version string, err error) {
 	return fmt.Sprintf("v%d.%d.%d", resp[0], resp[1], resp[2]), nil
 }
 
-func (n *NanoS) GetPublicKey(index uint32) (pubkey [32]byte, err error) {
+func (n *Nano) GetPublicKey(index uint32) (pubkey [32]byte, err error) {
 	encIndex := make([]byte, 4)
 	binary.LittleEndian.PutUint32(encIndex, index)
 
@@ -212,7 +212,7 @@ func (n *NanoS) GetPublicKey(index uint32) (pubkey [32]byte, err error) {
 	return
 }
 
-func (n *NanoS) GetAddress(index uint32) (addr types.UnlockHash, err error) {
+func (n *Nano) GetAddress(index uint32) (addr types.UnlockHash, err error) {
 	encIndex := make([]byte, 4)
 	binary.LittleEndian.PutUint32(encIndex, index)
 
@@ -224,7 +224,7 @@ func (n *NanoS) GetAddress(index uint32) (addr types.UnlockHash, err error) {
 	return
 }
 
-func (n *NanoS) SignHash(hash [32]byte, keyIndex uint32) (sig [64]byte, err error) {
+func (n *Nano) SignHash(hash [32]byte, keyIndex uint32) (sig [64]byte, err error) {
 	encIndex := make([]byte, 4)
 	binary.LittleEndian.PutUint32(encIndex, keyIndex)
 
@@ -238,7 +238,7 @@ func (n *NanoS) SignHash(hash [32]byte, keyIndex uint32) (sig [64]byte, err erro
 	return
 }
 
-func (n *NanoS) CalcTxnHash(txn types.Transaction, sigIndex uint16) (hash [32]byte, err error) {
+func (n *Nano) CalcTxnHash(txn types.Transaction, sigIndex uint16) (hash [32]byte, err error) {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, uint32(0)) // keyIndex
 	binary.Write(buf, binary.LittleEndian, sigIndex)
@@ -261,7 +261,7 @@ func (n *NanoS) CalcTxnHash(txn types.Transaction, sigIndex uint16) (hash [32]by
 	return
 }
 
-func (n *NanoS) SignTxn(txn types.Transaction, sigIndex uint16, keyIndex uint32) (sig [64]byte, err error) {
+func (n *Nano) SignTxn(txn types.Transaction, sigIndex uint16, keyIndex uint32) (sig [64]byte, err error) {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, keyIndex)
 	binary.Write(buf, binary.LittleEndian, sigIndex)
@@ -284,29 +284,37 @@ func (n *NanoS) SignTxn(txn types.Transaction, sigIndex uint16, keyIndex uint32)
 	return
 }
 
-func OpenNanoS() (*NanoS, error) {
+func OpenNano() (*Nano, error) {
 	const (
 		ledgerVendorID       = 0x2c97
 		ledgerNanoSProductID = 0x0001
-		//ledgerUsageID        = 0xffa0
+		// https://github.com/LedgerHQ/nanox-secure-sdk/blob/abe9a1bedd2e7226e591d30b568933d6cd78f0ff/lib_stusb_impl/usbd_impl.c#L171
+		ledgerNanoXProductID = 0x0004
 	)
 
 	// search for Nano S
-	devices := hid.Enumerate(ledgerVendorID, ledgerNanoSProductID)
-	if len(devices) == 0 {
-		return nil, errors.New("Nano S not detected")
-	} else if len(devices) > 1 {
+	nanoSDevices := hid.Enumerate(ledgerVendorID, ledgerNanoSProductID)
+	// search for Nano X
+	nanoXDevices := hid.Enumerate(ledgerVendorID, ledgerNanoXProductID)
+	if len(nanoSDevices) == 0 && len(nanoXDevices) == 0 {
+		return nil, errors.New("Nano not detected")
+	} else if len(nanoSDevices) > 1 || len(nanoXDevices) > 1 {
 		return nil, errors.New("Unexpected error -- Is the Sia wallet app running?")
 	}
 
-	// open the device
-	device, err := devices[0].Open()
+	var err error
+	var device *hid.Device
+	if len(nanoSDevices) > 0 {
+		device, err = nanoSDevices[0].Open()
+	} else if len(nanoXDevices) > 0 {
+		device, err = nanoXDevices[0].Open()
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	// wrap raw device I/O in HID+APDU protocols
-	return &NanoS{
+	return &Nano{
 		device: &apduFramer{
 			hf: &hidFramer{
 				rw: device,
@@ -397,10 +405,10 @@ func main() {
 	})
 	args := cmd.Args()
 
-	var nanos *NanoS
+	var nano *Nano
 	if cmd != rootCmd && cmd != versionCmd {
 		var err error
-		nanos, err = OpenNanoS()
+		nano, err = OpenNano()
 		if err != nil {
 			log.Fatalln("Couldn't open device:", err)
 		}
@@ -416,22 +424,22 @@ func main() {
 	case versionCmd:
 		// try to get Nano S app version
 		var appVersion string
-		nanos, err := OpenNanoS()
+		nano, err := OpenNano()
 		if err != nil {
-			appVersion = "(could not connect to Nano S)"
-		} else if appVersion, err = nanos.GetVersion(); err != nil {
-			appVersion = "(could not read version from Nano S: " + err.Error() + ")"
+			appVersion = "(could not connect to Nano S or X)"
+		} else if appVersion, err = nano.GetVersion(); err != nil {
+			appVersion = "(could not read version from Nano: " + err.Error() + ")"
 		}
 
 		fmt.Printf("%s v0.1.0\n", os.Args[0])
-		fmt.Println("Nano S app version:", appVersion)
+		fmt.Println("Nano app version:", appVersion)
 
 	case addrCmd:
 		if len(args) != 1 {
 			addrCmd.Usage()
 			return
 		}
-		addr, err := nanos.GetAddress(parseIndex(args[0]))
+		addr, err := nano.GetAddress(parseIndex(args[0]))
 		if err != nil {
 			log.Fatalln("Couldn't get address:", err)
 		}
@@ -442,7 +450,7 @@ func main() {
 			pubkeyCmd.Usage()
 			return
 		}
-		pubkey, err := nanos.GetPublicKey(parseIndex(args[0]))
+		pubkey, err := nano.GetPublicKey(parseIndex(args[0]))
 		if err != nil {
 			log.Fatalln("Couldn't get public key:", err)
 		}
@@ -463,7 +471,7 @@ func main() {
 		}
 		copy(hash[:], hashBytes)
 
-		sig, err := nanos.SignHash(hash, parseIndex(args[1]))
+		sig, err := nano.SignHash(hash, parseIndex(args[1]))
 		if err != nil {
 			log.Fatalln("Couldn't get signature:", err)
 		}
@@ -485,13 +493,13 @@ func main() {
 		sigIndex := uint16(parseIndex(args[1]))
 
 		if *txnHash {
-			sighash, err := nanos.CalcTxnHash(txn, sigIndex)
+			sighash, err := nano.CalcTxnHash(txn, sigIndex)
 			if err != nil {
 				log.Fatalln("Couldn't get hash:", err)
 			}
 			fmt.Println(hex.EncodeToString(sighash[:]))
 		} else {
-			sig, err := nanos.SignTxn(txn, sigIndex, parseIndex(args[2]))
+			sig, err := nano.SignTxn(txn, sigIndex, parseIndex(args[2]))
 			if err != nil {
 				log.Fatalln("Couldn't get signature:", err)
 			}
