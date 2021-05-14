@@ -21,7 +21,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <os.h>
+#include <string.h>
 #include <os_io_seproxyhal.h>
 #include <ux.h>
 #include "blake2b.h"
@@ -53,7 +53,7 @@ static unsigned int ui_calcTxnHash_compare_button(unsigned int button_mask, unsi
 		if (ctx->displayIndex > 0) {
 			ctx->displayIndex--;
 		}
-		os_memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
+		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
 		UX_REDISPLAY();
 		break;
 
@@ -62,7 +62,7 @@ static unsigned int ui_calcTxnHash_compare_button(unsigned int button_mask, unsi
 		if (ctx->displayIndex < ctx->elemLen-12) {
 			ctx->displayIndex++;
 		}
-		os_memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
+		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
 		UX_REDISPLAY();
 		break;
 
@@ -122,37 +122,37 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 
 	switch (txn->elemType) {
 	case TXN_ELEM_SC_OUTPUT:
-		os_memmove(ctx->labelStr, "Siacoin Output #", 16);
+		memmove(ctx->labelStr, "Siacoin Output #", 16);
 		bin2dec(ctx->labelStr+16, txn->sliceIndex);
 		// An element can have multiple screens. For each siacoin output, the
 		// user needs to see both the destination address and the amount.
 		// These are rendered in separate screens, and elemPart is used to
 		// identify which screen is being viewed.
 		if (ctx->elemPart == 0) {
-			os_memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
-			os_memmove(ctx->partialStr, ctx->fullStr, 12);
+			memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
+			memmove(ctx->partialStr, ctx->fullStr, 12);
 			ctx->elemLen = 76;
 			ctx->elemPart++;
 		} else {
-			os_memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
+			memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
 			ctx->elemLen = formatSC(ctx->fullStr, txn->valLen);
-			os_memmove(ctx->partialStr, ctx->fullStr, 12);
+			memmove(ctx->partialStr, ctx->fullStr, 12);
 			ctx->elemPart = 0;
 		}
 		break;
 
 	case TXN_ELEM_SF_OUTPUT:
-		os_memmove(ctx->labelStr, "Siafund Output #", 16);
+		memmove(ctx->labelStr, "Siafund Output #", 16);
 		bin2dec(ctx->labelStr+16, txn->sliceIndex);
 		if (ctx->elemPart == 0) {
-			os_memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
-			os_memmove(ctx->partialStr, ctx->fullStr, 12);
+			memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
+			memmove(ctx->partialStr, ctx->fullStr, 12);
 			ctx->elemLen = 76;
 			ctx->elemPart++;
 		} else {
-			os_memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
-			os_memmove(ctx->fullStr+txn->valLen, " SF", 4);
-			os_memmove(ctx->partialStr, ctx->fullStr, 12);
+			memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
+			memmove(ctx->fullStr+txn->valLen, " SF", 4);
+			memmove(ctx->partialStr, ctx->fullStr, 12);
 			ctx->elemLen = txn->valLen + 4;
 			ctx->elemPart = 0;
 		}
@@ -160,11 +160,11 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 
 	case TXN_ELEM_MINER_FEE:
 		// Miner fees only have one part.
-		os_memmove(ctx->labelStr, "Miner Fee #", 11);
+		memmove(ctx->labelStr, "Miner Fee #", 11);
 		bin2dec(ctx->labelStr+11, txn->sliceIndex);
-		os_memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
+		memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
 		ctx->elemLen = formatSC(ctx->fullStr, txn->valLen);
-		os_memmove(ctx->partialStr, ctx->fullStr, 12);
+		memmove(ctx->partialStr, ctx->fullStr, 12);
 		ctx->elemPart = 0;
 		break;
 
@@ -187,7 +187,7 @@ static unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigne
 		if (ctx->displayIndex > 0) {
 			ctx->displayIndex--;
 		}
-		os_memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
+		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
 		UX_REDISPLAY();
 		break;
 
@@ -196,7 +196,7 @@ static unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigne
 		if (ctx->displayIndex < ctx->elemLen-12) {
 			ctx->displayIndex++;
 		}
-		os_memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
+		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
 		UX_REDISPLAY();
 		break;
 
@@ -233,16 +233,16 @@ static unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigne
 			if (ctx->sign) {
 				// If we're signing the transaction, prepare and display the
 				// approval screen.
-				os_memmove(ctx->fullStr, "with Key #", 10);
-				os_memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
+				memmove(ctx->fullStr, "with Key #", 10);
+				memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
 				UX_DISPLAY(ui_calcTxnHash_sign, NULL);
 			} else {
 				// If we're just computing the hash, send it immediately and
 				// display the comparison screen
-				os_memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
+				memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
 				io_exchange_with_code(SW_OK, 32);
 				bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-				os_memmove(ctx->partialStr, ctx->fullStr, 12);
+				memmove(ctx->partialStr, ctx->fullStr, 12);
 				ctx->elemLen = 64;
 				ctx->displayIndex = 0;
 				UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);
@@ -324,16 +324,16 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 		break;
 	case TXN_STATE_FINISHED:
 		if (ctx->sign) {
-			os_memmove(ctx->fullStr, "with Key #", 10);
+			memmove(ctx->fullStr, "with Key #", 10);
 			bin2dec(ctx->fullStr+10, ctx->keyIndex);
-			os_memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
+			memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
 			UX_DISPLAY(ui_calcTxnHash_sign, NULL);
 			*flags |= IO_ASYNCH_REPLY;
 		} else {
-			os_memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
+			memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
 			io_exchange_with_code(SW_OK, 32);
 			bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-			os_memmove(ctx->partialStr, ctx->fullStr, 12);
+			memmove(ctx->partialStr, ctx->fullStr, 12);
 			ctx->elemLen = 64;
 			ctx->displayIndex = 0;
 			UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);

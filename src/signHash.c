@@ -17,7 +17,7 @@
 //
 // Keep this description in mind as you read through the implementation.
 
-#include <os.h>
+#include <string.h>
 #include <os_io_seproxyhal.h>
 #include "blake2b.h"
 #include "sia.h"
@@ -190,10 +190,8 @@ static unsigned int ui_signHash_compare_button(unsigned int button_mask, unsigne
 			ctx->displayIndex--;
 		}
 		// Use the displayIndex to recalculate the displayed portion of the
-		// text. os_memmove is the Ledger SDK's version of memmove (there is
-		// no os_memcpy). In practice, I don't think it matters whether you
-		// use os_memmove or the standard memmove from <string.h>.
-		os_memmove(ctx->partialHashStr, ctx->hexHash+ctx->displayIndex, 12);
+		// text.
+		memmove(ctx->partialHashStr, ctx->hexHash+ctx->displayIndex, 12);
 		// Re-render the screen.
 		UX_REDISPLAY();
 		break;
@@ -203,17 +201,17 @@ static unsigned int ui_signHash_compare_button(unsigned int button_mask, unsigne
 		if (ctx->displayIndex < sizeof(ctx->hexHash)-12) {
 			ctx->displayIndex++;
 		}
-		os_memmove(ctx->partialHashStr, ctx->hexHash+ctx->displayIndex, 12);
+		memmove(ctx->partialHashStr, ctx->hexHash+ctx->displayIndex, 12);
 		UX_REDISPLAY();
 		break;
 
 	case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // PROCEED
 		// Prepare to display the approval screen by printing the key index
-		// into the indexStr buffer. We copy two bytes in the final os_memmove
+		// into the indexStr buffer. We copy two bytes in the final memmove
 		// so as to include the terminating '\0' byte for the string.
-		os_memmove(ctx->indexStr, "with Key #", 10);
+		memmove(ctx->indexStr, "with Key #", 10);
 		int n = bin2dec(ctx->indexStr+10, ctx->keyIndex);
-		os_memmove(ctx->indexStr+10+n, "?", 2);
+		memmove(ctx->indexStr+10+n, "?", 2);
 		// Note that because the approval screen does not have a preprocessor,
 		// we must pass NULL.
 		UX_DISPLAY(ui_signHash_approve, NULL);
@@ -233,12 +231,12 @@ void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLe
 	// converting a 4-byte buffer to a uint32_t.
 	ctx->keyIndex = U4LE(dataBuffer, 0);
 	// Read the hash.
-	os_memmove(ctx->hash, dataBuffer+4, sizeof(ctx->hash));
+	memmove(ctx->hash, dataBuffer+4, sizeof(ctx->hash));
 
 	// Prepare to display the comparison screen by converting the hash to hex
 	// and moving the first 12 characters into the partialHashStr buffer.
 	bin2hex(ctx->hexHash, ctx->hash, sizeof(ctx->hash));
-	os_memmove(ctx->partialHashStr, ctx->hexHash, 12);
+	memmove(ctx->partialHashStr, ctx->hexHash, 12);
 	ctx->partialHashStr[12] = '\0';
 	ctx->displayIndex = 0;
 

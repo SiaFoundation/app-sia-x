@@ -20,7 +20,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <os.h>
+#include <string.h>
 #include <os_io_seproxyhal.h>
 #include <ux.h>
 #include "blake2b.h"
@@ -64,7 +64,7 @@ static unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, uns
 		if (ctx->displayIndex > 0) {
 			ctx->displayIndex--;
 		}
-		os_memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
+		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
 		UX_REDISPLAY();
 		break;
 
@@ -73,7 +73,7 @@ static unsigned int ui_getPublicKey_compare_button(unsigned int button_mask, uns
 		if (ctx->displayIndex < fullSize-12) {
 			ctx->displayIndex++;
 		}
-		os_memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
+		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
 		UX_REDISPLAY();
 		break;
 
@@ -136,18 +136,18 @@ static unsigned int ui_getPublicKey_approve_button(unsigned int button_mask, uns
 		io_exchange_with_code(SW_OK, tx);
 
 		// Prepare the comparison screen, filling in the header and body text.
-		os_memmove(ctx->typeStr, "Compare:", 9);
+		memmove(ctx->typeStr, "Compare:", 9);
 		if (ctx->genAddr) {
 			// The APDU buffer already contains the hex-encoded address, so
 			// copy it directly.
-			os_memmove(ctx->fullStr, G_io_apdu_buffer + 32, 76);
+			memmove(ctx->fullStr, G_io_apdu_buffer + 32, 76);
 			ctx->fullStr[76] = '\0';
 		} else {
 			// The APDU buffer contains the raw bytes of the public key, so
 			// first we need to convert to a human-readable form.
 			bin2hex(ctx->fullStr, G_io_apdu_buffer, 32);
 		}
-		os_memmove(ctx->partialStr, ctx->fullStr, 12);
+		memmove(ctx->partialStr, ctx->fullStr, 12);
 		ctx->partialStr[12] = '\0';
 		ctx->displayIndex = 0;
 
@@ -186,15 +186,15 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t da
 
 	// Prepare the approval screen, filling in the header and body text.
 	if (ctx->genAddr) {
-		os_memmove(ctx->typeStr, "Generate Address", 17);
-		os_memmove(ctx->keyStr, "from Key #", 10);
+		memmove(ctx->typeStr, "Generate Address", 17);
+		memmove(ctx->keyStr, "from Key #", 10);
 		int n = bin2dec(ctx->keyStr+10, ctx->keyIndex);
-		os_memmove(ctx->keyStr+10+n, "?", 2);
+		memmove(ctx->keyStr+10+n, "?", 2);
 	} else {
-		os_memmove(ctx->typeStr, "Generate Public", 16);
-		os_memmove(ctx->keyStr, "Key #", 5);
+		memmove(ctx->typeStr, "Generate Public", 16);
+		memmove(ctx->keyStr, "Key #", 5);
 		int n = bin2dec(ctx->keyStr+5, ctx->keyIndex);
-		os_memmove(ctx->keyStr+5+n, "?", 2);
+		memmove(ctx->keyStr+5+n, "?", 2);
 	}
 	UX_DISPLAY(ui_getPublicKey_approve, NULL);
 	

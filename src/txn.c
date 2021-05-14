@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <os.h>
 #include "blake2b.h"
 #include "sia.h"
@@ -97,7 +98,7 @@ static int cur2dec(uint8_t *out, uint8_t *cur) {
 	}
 
 	// copy buf->out, trimming whitespace
-	os_memmove(out, buf+i, sizeof(buf)-i);
+	memmove(out, buf+i, sizeof(buf)-i);
 	return sizeof(buf)-i-1;
 }
 
@@ -122,7 +123,7 @@ static void advance(txn_state_t *txn) {
 	}
 
 	txn->buflen -= txn->pos;
-	os_memmove(txn->buf, txn->buf+txn->pos, txn->buflen);
+	memmove(txn->buf, txn->buf+txn->pos, txn->buflen);
 	txn->pos = 0;
 }
 
@@ -232,7 +233,7 @@ static void __txn_next_elem(txn_state_t *txn) {
 
 	case TXN_ELEM_MINER_FEE:
 		readCurrency(txn, txn->outVal); // Value
-		os_memmove(txn->outAddr, "[Miner Fee]", 12);
+		memmove(txn->outAddr, "[Miner Fee]", 12);
 		advance(txn);
 		txn->sliceIndex++;
 		THROW(TXN_STATE_READY);
@@ -310,7 +311,7 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn) {
 }
 
 void txn_init(txn_state_t *txn, uint16_t sigIndex) {
-	os_memset(txn, 0, sizeof(txn_state_t));
+	memset(txn, 0, sizeof(txn_state_t));
 	txn->buflen = txn->pos = txn->sliceIndex = txn->sliceLen = txn->valLen = 0;
 	txn->elemType = -1; // first increment brings it to SC_INPUT
 	txn->sigIndex = sigIndex;
@@ -327,7 +328,7 @@ void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen) {
 	}
 
 	// append to the buffer
-	os_memmove(txn->buf + txn->buflen, in, inlen);
+	memmove(txn->buf + txn->buflen, in, inlen);
 	txn->buflen += inlen;
 
 	// reset the seek position; if we previously threw TXN_STATE_PARTIAL, now

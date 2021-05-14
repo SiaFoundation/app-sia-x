@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <os.h>
+#include <string.h>
 #include <cx.h>
 #include "blake2b.h"
 #include "sia.h"
@@ -21,8 +22,8 @@ void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp
 	if (privateKey) {
 		*privateKey = pk;
 	}
-	os_memset(keySeed, 0, sizeof(keySeed));
-	os_memset(&pk, 0, sizeof(pk));
+	memset(keySeed, 0, sizeof(keySeed));
+	memset(&pk, 0, sizeof(pk));
 }
 
 void extractPubkeyBytes(unsigned char *dst, cx_ecfp_public_key_t *publicKey) {
@@ -38,7 +39,7 @@ void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
 	cx_ecfp_private_key_t privateKey;
 	deriveSiaKeypair(index, &privateKey, NULL);
 	cx_eddsa_sign(&privateKey, CX_RND_RFC6979 | CX_LAST, CX_SHA512, hash, 32, NULL, 0, dst, 64, NULL);
-	os_memset(&privateKey, 0, sizeof(privateKey));
+	memset(&privateKey, 0, sizeof(privateKey));
 }
 
 void bin2hex(uint8_t *dst, uint8_t *data, uint64_t inlen) {
@@ -68,18 +69,18 @@ void pubkeyToSiaAddress(uint8_t *dst, cx_ecfp_public_key_t *publicKey) {
 	// encode the timelock, pubkey, and sigsrequired
 	// TODO: can reuse buffers here to make this more efficient
 	uint8_t timelockData[9];
-	os_memset(timelockData, 0, sizeof(timelockData));
+	memset(timelockData, 0, sizeof(timelockData));
 	timelockData[0] = leafHashPrefix;
 
 	uint8_t pubkeyData[57];
-	os_memset(pubkeyData, 0, sizeof(pubkeyData));
+	memset(pubkeyData, 0, sizeof(pubkeyData));
 	pubkeyData[0] = leafHashPrefix;
-	os_memmove(pubkeyData + 1, "ed25519", 7);
+	memmove(pubkeyData + 1, "ed25519", 7);
 	pubkeyData[17] = 32;
 	extractPubkeyBytes(pubkeyData + 25, publicKey);
 
 	uint8_t sigsrequiredData[9];
-	os_memset(sigsrequiredData, 0, sizeof(sigsrequiredData));
+	memset(sigsrequiredData, 0, sizeof(sigsrequiredData));
 	sigsrequiredData[0] = leafHashPrefix;
 	sigsrequiredData[1] = 1;
 
@@ -132,11 +133,11 @@ int bin2dec(uint8_t *dst, uint64_t n) {
 int formatSC(uint8_t *buf, uint8_t decLen) {
 	if (decLen < SC_ZEROS+1) {
 		// if < 1 SC, pad with leading zeros
-		os_memmove(buf + (SC_ZEROS-decLen)+2, buf, decLen+1);
-		os_memset(buf, '0', SC_ZEROS+2-decLen);
+		memmove(buf + (SC_ZEROS-decLen)+2, buf, decLen+1);
+		memset(buf, '0', SC_ZEROS+2-decLen);
 		decLen = SC_ZEROS + 1;
 	} else {
-		os_memmove(buf + (decLen-SC_ZEROS)+1, buf + (decLen-SC_ZEROS), SC_ZEROS+1);
+		memmove(buf + (decLen-SC_ZEROS)+1, buf + (decLen-SC_ZEROS), SC_ZEROS+1);
 	}
 	// add decimal point, trim trailing zeros, and add units
 	buf[decLen-SC_ZEROS] = '.';
@@ -146,6 +147,6 @@ int formatSC(uint8_t *buf, uint8_t decLen) {
 	if (buf[decLen] == '.') {
 		decLen--;
 	}
-	os_memmove(buf + decLen + 1, " SC", 4);
+	memmove(buf + decLen + 1, " SC", 4);
 	return decLen + 4;
 }
