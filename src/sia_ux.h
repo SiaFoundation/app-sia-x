@@ -12,19 +12,12 @@ typedef struct {
 	uint8_t typeStr[40]; // variable-length
 	uint8_t keyStr[40]; // variable-length
 	uint8_t fullStr[77]; // variable length
-	// partialStr contains 12 characters of a longer string. This allows text
-	// to be scrolled.
-	uint8_t partialStr[13];
 } getPublicKeyContext_t;
 
 typedef struct {
 	uint32_t keyIndex;
 	uint8_t hash[32];
 	uint8_t hexHash[64];
-	uint8_t displayIndex;
-	// NUL-terminated strings for display
-	uint8_t indexStr[40]; // variable-length
-	uint8_t partialHashStr[13];
 } signHashContext_t;
 
 typedef struct {
@@ -70,8 +63,14 @@ extern commandContext global;
 // when they finish.
 void ui_idle(void);
 
+// about submenu of the main screen
+void ui_menu_about(void);
+
 // io_exchange_with_code is a helper function for sending APDUs, primarily
 // from button handlers. It appends code to G_io_apdu_buffer and calls
 // io_exchange with the IO_RETURN_AFTER_TX flag. tx is the current offset
 // within G_io_apdu_buffer (before the code is appended).
 void io_exchange_with_code(uint16_t code, uint16_t tx);
+
+// standard "reject" function so we don't repeat code
+unsigned int io_seproxyhal_cancel(void);
