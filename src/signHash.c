@@ -30,7 +30,7 @@
 // signHash-related function.
 static signHashContext_t *ctx = &global.signHashContext;
 
-unsigned int io_seproxyhal_touch_hash_ok(void) {
+static unsigned int io_seproxyhal_touch_hash_ok(void) {
     // Derive the secret key and sign the hash, storing the signature in
     // the APDU buffer. This is the first Sia-specific function we've
     // encountered; it is defined in sia.c.

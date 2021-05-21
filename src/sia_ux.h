@@ -7,7 +7,6 @@
 typedef struct {
 	uint32_t keyIndex;
 	bool genAddr;
-	uint8_t displayIndex;
 	// NUL-terminated strings for display
 	uint8_t typeStr[40]; // variable-length
 	uint8_t keyStr[40]; // variable-length
@@ -23,14 +22,11 @@ typedef struct {
 typedef struct {
 	uint32_t keyIndex;
 	bool sign;
-	uint8_t elemLen;
-	uint8_t displayIndex;
 	uint8_t elemPart; // screen index of elements
 	txn_state_t txn;
 	// NUL-terminated strings for display
 	uint8_t labelStr[40]; // variable length
 	uint8_t fullStr[128]; // variable length
-	uint8_t partialStr[13];
 	bool initialized; // protects against certain attacks
 } calcTxnHashContext_t;
 

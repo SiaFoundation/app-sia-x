@@ -30,87 +30,83 @@
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
-static const bagl_element_t ui_calcTxnHash_compare[] = {
-	UI_BACKGROUND(),
-	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
-	UI_ICON_RIGHT(0x02, BAGL_GLYPH_ICON_RIGHT),
-	UI_TEXT(0x00, 0, 12, 128, "Compare Hash:"),
-	UI_TEXT(0x00, 0, 26, 128, global.calcTxnHashContext.partialStr),
-};
+static unsigned int ui_calcTxnHash_elem_button(void);
+static unsigned int io_seproxyhal_touch_txn_hash_ok(void);
 
-static const bagl_element_t* ui_prepro_calcTxnHash_compare(const bagl_element_t *element) {
-	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
-	    (element->component.userid == 2 && ctx->displayIndex == ctx->elemLen-12)) {
-		return NULL;
+UX_STEP_CB(
+	ux_compare_hash_flow_1_step,
+	bnnn_paging,
+	ui_idle(),
+	{
+		"Compare Hash:",
+		global.calcTxnHashContext.fullStr
 	}
-	return element;
-}
+);
 
-static unsigned int ui_calcTxnHash_compare_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	switch (button_mask) {
-	case BUTTON_LEFT:
-	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
-		if (ctx->displayIndex > 0) {
-			ctx->displayIndex--;
-		}
-		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
-		UX_REDISPLAY();
-		break;
+UX_DEF(
+	ux_compare_hash_flow,
+	&ux_compare_hash_flow_1_step
+);
 
-	case BUTTON_RIGHT:
-	case BUTTON_EVT_FAST | BUTTON_RIGHT: // SEEK RIGHT
-		if (ctx->displayIndex < ctx->elemLen-12) {
-			ctx->displayIndex++;
-		}
-		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
-		UX_REDISPLAY();
-		break;
-
-	case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // PROCEED
-		ui_idle();
-		break;
+UX_STEP_NOCB(
+	ux_sign_txn_flow_1_step,
+	nn,
+	{
+		"Sign this txn",
+		global.calcTxnHashContext.fullStr
 	}
-	return 0;
-}
+);
 
-static const bagl_element_t ui_calcTxnHash_sign[] = {
-	UI_BACKGROUND(),
-	UI_ICON_LEFT(0x00, BAGL_GLYPH_ICON_CROSS),
-	UI_ICON_RIGHT(0x00, BAGL_GLYPH_ICON_CHECK),
-	UI_TEXT(0x00, 0, 12, 128, "Sign this Txn"),
-	UI_TEXT(0x00, 0, 26, 128, global.calcTxnHashContext.fullStr), // "with Key #123?"
-};
-
-static unsigned int ui_calcTxnHash_sign_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	switch (button_mask) {
-	case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
-		io_exchange_with_code(SW_USER_REJECTED, 0);
-		ui_idle();
-		break;
-
-	case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
-		deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
-		io_exchange_with_code(SW_OK, 64);
-		ui_idle();
-		break;
+UX_STEP_VALID(
+	ux_sign_txn_flow_2_step,
+	pb,
+	io_seproxyhal_touch_txn_hash_ok(),
+	{
+		&C_icon_validate,
+		"Approve"
 	}
-	return 0;
-}
+);
 
-static const bagl_element_t ui_calcTxnHash_elem[] = {
-	UI_BACKGROUND(),
-	UI_ICON_LEFT(0x01, BAGL_GLYPH_ICON_LEFT),
-	UI_ICON_RIGHT(0x02, BAGL_GLYPH_ICON_RIGHT),
-	UI_TEXT(0x00, 0, 12, 128, global.calcTxnHashContext.labelStr),
-	UI_TEXT(0x00, 0, 26, 128, global.calcTxnHashContext.partialStr),
-};
-
-static const bagl_element_t* ui_prepro_calcTxnHash_elem(const bagl_element_t *element) {
-	if ((element->component.userid == 1 && ctx->displayIndex == 0) ||
-	    (element->component.userid == 2 && ((ctx->elemLen < 12) || (ctx->displayIndex == ctx->elemLen-12)))) {
-		return NULL;
+UX_STEP_VALID(
+	ux_sign_txn_flow_3_step,
+	pb,
+	io_seproxyhal_cancel(),
+	{
+		&C_icon_crossmark,
+		"Reject"
 	}
-	return element;
+);
+
+UX_DEF(
+	ux_sign_txn_flow,
+	&ux_sign_txn_flow_1_step,
+	&ux_sign_txn_flow_2_step,
+	&ux_sign_txn_flow_3_step
+);
+
+UX_STEP_VALID(
+	ux_show_txn_elem_1_step,
+#ifdef TARGET_NANOX
+	bnnn_paging,
+#else
+	bn_paging,
+#endif
+	ui_calcTxnHash_elem_button(),
+	{
+		global.calcTxnHashContext.labelStr,
+		global.calcTxnHashContext.fullStr
+	}
+);
+
+UX_DEF(
+	ux_show_txn_elem_flow,
+	&ux_show_txn_elem_1_step
+);
+
+static unsigned int io_seproxyhal_touch_txn_hash_ok(void) {
+	deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
+	io_exchange_with_code(SW_OK, 64);
+	ui_idle();
 }
 
 // This is a helper function that prepares an element of the transaction for
@@ -122,7 +118,7 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 
 	switch (txn->elemType) {
 	case TXN_ELEM_SC_OUTPUT:
-		memmove(ctx->labelStr, "Siacoin Output #", 16);
+		memmove(ctx->labelStr, "SC Output #", 11);
 		bin2dec(ctx->labelStr+16, txn->sliceIndex);
 		// An element can have multiple screens. For each siacoin output, the
 		// user needs to see both the destination address and the amount.
@@ -130,30 +126,23 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 		// identify which screen is being viewed.
 		if (ctx->elemPart == 0) {
 			memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
-			memmove(ctx->partialStr, ctx->fullStr, 12);
-			ctx->elemLen = 76;
 			ctx->elemPart++;
 		} else {
 			memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
-			ctx->elemLen = formatSC(ctx->fullStr, txn->valLen);
-			memmove(ctx->partialStr, ctx->fullStr, 12);
+			formatSC(ctx->fullStr, txn->valLen);
 			ctx->elemPart = 0;
 		}
 		break;
 
 	case TXN_ELEM_SF_OUTPUT:
-		memmove(ctx->labelStr, "Siafund Output #", 16);
+		memmove(ctx->labelStr, "SF Output #", 11);
 		bin2dec(ctx->labelStr+16, txn->sliceIndex);
 		if (ctx->elemPart == 0) {
 			memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
-			memmove(ctx->partialStr, ctx->fullStr, 12);
-			ctx->elemLen = 76;
 			ctx->elemPart++;
 		} else {
 			memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
 			memmove(ctx->fullStr+txn->valLen, " SF", 4);
-			memmove(ctx->partialStr, ctx->fullStr, 12);
-			ctx->elemLen = txn->valLen + 4;
 			ctx->elemPart = 0;
 		}
 		break;
@@ -163,8 +152,7 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 		memmove(ctx->labelStr, "Miner Fee #", 11);
 		bin2dec(ctx->labelStr+11, txn->sliceIndex);
 		memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
-		ctx->elemLen = formatSC(ctx->fullStr, txn->valLen);
-		memmove(ctx->partialStr, ctx->fullStr, 12);
+		formatSC(ctx->fullStr, txn->valLen);
 		ctx->elemPart = 0;
 		break;
 
@@ -174,39 +162,15 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 		ui_idle();
 		break;
 	}
-
-	// Regardless of what we're displaying, the displayIndex should always be
-	// reset to 0, because we're displaying the beginning of fullStr.
-	ctx->displayIndex = 0;
 }
 
-static unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigned int button_mask_counter) {
-	switch (button_mask) {
-	case BUTTON_LEFT:
-	case BUTTON_EVT_FAST | BUTTON_LEFT: // SEEK LEFT
-		if (ctx->displayIndex > 0) {
-			ctx->displayIndex--;
-		}
-		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
-		UX_REDISPLAY();
-		break;
-
-	case BUTTON_RIGHT:
-	case BUTTON_EVT_FAST | BUTTON_RIGHT: // SEEK RIGHT
-		if (ctx->displayIndex < ctx->elemLen-12) {
-			ctx->displayIndex++;
-		}
-		memmove(ctx->partialStr, ctx->fullStr+ctx->displayIndex, 12);
-		UX_REDISPLAY();
-		break;
-
-	case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // PROCEED
+static unsigned int ui_calcTxnHash_elem_button(void) {
 		if (ctx->elemPart > 0) {
 			// We're in the middle of displaying a multi-part element; display
 			// the next part.
 			fmtTxnElem(ctx);
-			UX_REDISPLAY();
-			break;
+		    ux_flow_init(0, ux_show_txn_elem_flow, NULL);
+		    return 0;
 		}
 		// Attempt to decode the next element in the transaction.
 		switch (txn_next_elem(&ctx->txn)) {
@@ -225,7 +189,7 @@ static unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigne
 			// part of the first element.
 			ctx->elemPart = 0;
 			fmtTxnElem(ctx);
-			UX_REDISPLAY();
+		    ux_flow_init(0, ux_show_txn_elem_flow, NULL);
 			break;
 		case TXN_STATE_FINISHED:
 			// We've finished decoding the transaction, and all elements have
@@ -233,26 +197,22 @@ static unsigned int ui_calcTxnHash_elem_button(unsigned int button_mask, unsigne
 			if (ctx->sign) {
 				// If we're signing the transaction, prepare and display the
 				// approval screen.
-				memmove(ctx->fullStr, "with Key #", 10);
+				memmove(ctx->fullStr, "with key #", 10);
 				memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
-				UX_DISPLAY(ui_calcTxnHash_sign, NULL);
+			    ux_flow_init(0, ux_sign_txn_flow, NULL);
+
 			} else {
 				// If we're just computing the hash, send it immediately and
 				// display the comparison screen
 				memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
 				io_exchange_with_code(SW_OK, 32);
 				bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-				memmove(ctx->partialStr, ctx->fullStr, 12);
-				ctx->elemLen = 64;
-				ctx->displayIndex = 0;
-				UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);
+				ux_flow_init(0, ux_compare_hash_flow, NULL);
 			}
 			// Reset the initialization state.
 			ctx->initialized = false;
 			break;
 		}
-		break;
-	}
 	return 0;
 }
 
@@ -294,9 +254,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 		// Set ctx->sign according to P2.
 		ctx->sign = (p2 & P2_SIGN_HASH);
 
-		// Initialize some display-related variables.
-		ctx->partialStr[12] = '\0';
-		ctx->elemPart = ctx->elemLen = ctx->displayIndex = 0;
+		ctx->elemPart = 0;
 	} else {
 		// If this is not P1_FIRST, the transaction must have been
 		// initialized previously.
@@ -319,24 +277,21 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 	case TXN_STATE_READY:
 		ctx->elemPart = 0;
 		fmtTxnElem(ctx);
-		UX_DISPLAY(ui_calcTxnHash_elem, ui_prepro_calcTxnHash_elem);
+		ux_flow_init(0, ux_show_txn_elem_flow, NULL);
 		*flags |= IO_ASYNCH_REPLY;
 		break;
 	case TXN_STATE_FINISHED:
 		if (ctx->sign) {
-			memmove(ctx->fullStr, "with Key #", 10);
+			memmove(ctx->fullStr, "with key #", 10);
 			bin2dec(ctx->fullStr+10, ctx->keyIndex);
 			memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
-			UX_DISPLAY(ui_calcTxnHash_sign, NULL);
+			ux_flow_init(0, ux_sign_txn_flow, NULL);
 			*flags |= IO_ASYNCH_REPLY;
 		} else {
 			memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
 			io_exchange_with_code(SW_OK, 32);
 			bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-			memmove(ctx->partialStr, ctx->fullStr, 12);
-			ctx->elemLen = 64;
-			ctx->displayIndex = 0;
-			UX_DISPLAY(ui_calcTxnHash_compare, ui_prepro_calcTxnHash_compare);
+			ux_flow_init(0, ux_compare_hash_flow, NULL);
 			// The above code does something strange: it calls io_exchange
 			// directly from the command handler. You might wonder: why not
 			// just prepare the APDU buffer and let sia_main call io_exchange?
