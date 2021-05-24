@@ -65,7 +65,7 @@ UX_STEP_VALID(
 	pb,
 	io_seproxyhal_cancel(),
 	{
-		&C_icon_validate,
+		&C_icon_crossmark,
 		"Reject"
 	}
 );

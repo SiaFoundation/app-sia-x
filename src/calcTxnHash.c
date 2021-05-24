@@ -86,11 +86,7 @@ UX_DEF(
 
 UX_STEP_VALID(
 	ux_show_txn_elem_1_step,
-#ifdef TARGET_NANOX
 	bnnn_paging,
-#else
-	bn_paging,
-#endif
 	ui_calcTxnHash_elem_button(),
 	{
 		global.calcTxnHashContext.labelStr,
