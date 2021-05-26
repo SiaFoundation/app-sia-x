@@ -70,7 +70,11 @@ UX_STEP_VALID(
 	}
 );
 
-UX_DEF(
+// Flow for the signing hash menu:
+// #1 screen: the hash repeated for confirmation
+// #2 screen: approve
+// #3 screen: reject
+UX_FLOW(
 	ux_approve_hash_flow,
 	&ux_approve_hash_flow_1_step,
 	&ux_approve_hash_flow_2_step,

@@ -30,6 +30,7 @@
 // Get a pointer to getPublicKey's state variables.
 static getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 
+// Allows scrolling through the address/public key
 UX_STEP_CB(
 	ux_compare_pk_flow_1_step,
 	bnnn_paging,
@@ -40,7 +41,7 @@ UX_STEP_CB(
 	}
 );
 
-UX_DEF(
+UX_FLOW(
 	ux_compare_pk_flow,
 	&ux_compare_pk_flow_1_step
 );
@@ -108,7 +109,11 @@ UX_STEP_VALID(
 	}
 );
 
-UX_DEF(
+// Flow for the public key/address menu:
+// #1 screen: "generate address/public key from key #x?"
+// #2 screen: approve
+// #3 screen: reject
+UX_FLOW(
 	ux_approve_pk_flow,
 	&ux_approve_pk_flow_1_step,
 	&ux_approve_pk_flow_2_step,
@@ -153,8 +158,6 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
         int n = bin2dec(ctx->keyStr + 5, ctx->keyIndex);
         memmove(ctx->keyStr + 5 + n, "?", 2);
     }
-
-    ui_idle();
 
     ux_flow_init(0, ux_approve_pk_flow, NULL);
 

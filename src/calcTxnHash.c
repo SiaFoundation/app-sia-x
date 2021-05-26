@@ -43,7 +43,7 @@ UX_STEP_CB(
 	}
 );
 
-UX_DEF(
+UX_FLOW(
 	ux_compare_hash_flow,
 	&ux_compare_hash_flow_1_step
 );
@@ -77,13 +77,19 @@ UX_STEP_VALID(
 	}
 );
 
-UX_DEF(
+// Flow for the signing transaction menu:
+// #1 screen: "Sign this txn?"
+// #2 screen: approve
+// #3 screen: reject
+UX_FLOW(
 	ux_sign_txn_flow,
 	&ux_sign_txn_flow_1_step,
 	&ux_sign_txn_flow_2_step,
 	&ux_sign_txn_flow_3_step
 );
 
+// We use one generic step for each element so we don't have to make
+// separate UX_FLOWs for SC outputs, SF outputs, miner fees, etc
 UX_STEP_VALID(
 	ux_show_txn_elem_1_step,
 	bnnn_paging,
@@ -94,7 +100,11 @@ UX_STEP_VALID(
 	}
 );
 
-UX_DEF(
+// For each element of the transaction (sc outputs, sf outputs, miner fees),
+// we show the data paginated for confirmation purposes. When the user
+// confirms that element, they are shown the next element until
+// they finish all the elements and are given the option to approve/reject.
+UX_FLOW(
 	ux_show_txn_elem_flow,
 	&ux_show_txn_elem_1_step
 );
