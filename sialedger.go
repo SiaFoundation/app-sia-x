@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"net"
 	"os"
 	"strconv"
 
@@ -21,6 +22,7 @@ import (
 )
 
 var DEBUG bool
+var TCP bool
 
 type hidFramer struct {
 	rw  io.ReadWriter
@@ -37,54 +39,65 @@ func (hf *hidFramer) Write(p []byte) (int, error) {
 	if DEBUG {
 		fmt.Println("HID <=", hex.EncodeToString(p))
 	}
-	// split into 64-byte chunks
-	chunk := make([]byte, 64)
-	binary.BigEndian.PutUint16(chunk[:2], 0x0101)
-	chunk[2] = 0x05
-	var seq uint16
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, uint16(len(p)))
-	buf.Write(p)
-	for buf.Len() > 0 {
-		binary.BigEndian.PutUint16(chunk[3:5], seq)
-		n, _ := buf.Read(chunk[5:])
-		if n, err := hf.rw.Write(chunk[:5+n]); err != nil {
-			return n, err
+	if TCP {
+		// IO over TCP works slightly differently - see https://github.com/LedgerHQ/ledgercomm/blob/master/ledgercomm/interfaces/tcp_client.py#L74
+		lenBuf := make([]byte, 4)
+		binary.BigEndian.PutUint32(lenBuf, uint32(len(p)))
+		hf.rw.Write(append(lenBuf, p...))
+	} else {
+		// split into 64-byte chunks
+		chunk := make([]byte, 64)
+		binary.BigEndian.PutUint16(chunk[:2], 0x0101)
+		chunk[2] = 0x05
+		var seq uint16
+		buf := new(bytes.Buffer)
+		binary.Write(buf, binary.BigEndian, uint16(len(p)))
+		buf.Write(p)
+		for buf.Len() > 0 {
+			binary.BigEndian.PutUint16(chunk[3:5], seq)
+			n, _ := buf.Read(chunk[5:])
+			if n, err := hf.rw.Write(chunk[:5+n]); err != nil {
+				return n, err
+			}
+			seq++
 		}
-		seq++
 	}
 	return len(p), nil
 }
 
 func (hf *hidFramer) Read(p []byte) (int, error) {
-	if hf.seq > 0 && hf.pos != 64 {
-		// drain buf
-		n := copy(p, hf.buf[hf.pos:])
-		hf.pos += n
+	if TCP {
+		return hf.rw.Read(p)
+	} else {
+		if hf.seq > 0 && hf.pos != 64 {
+			// drain buf
+			n := copy(p, hf.buf[hf.pos:])
+			hf.pos += n
+			return n, nil
+		}
+		// read next 64-byte packet
+		if n, err := hf.rw.Read(hf.buf[:]); err != nil {
+			return 0, err
+		} else if n != 64 {
+			panic("read less than 64 bytes from HID")
+		}
+		// parse header
+		channelID := binary.BigEndian.Uint16(hf.buf[:2])
+		commandTag := hf.buf[2]
+		seq := binary.BigEndian.Uint16(hf.buf[3:5])
+		if channelID != 0x0101 {
+			return 0, fmt.Errorf("bad channel ID 0x%x", channelID)
+		} else if commandTag != 0x05 {
+			return 0, fmt.Errorf("bad command tag 0x%x", commandTag)
+		} else if seq != hf.seq {
+			return 0, fmt.Errorf("bad sequence number %v (expected %v)", seq, hf.seq)
+		}
+		hf.seq++
+		// start filling p
+		n := copy(p, hf.buf[5:])
+		hf.pos = 5 + n
 		return n, nil
 	}
-	// read next 64-byte packet
-	if n, err := hf.rw.Read(hf.buf[:]); err != nil {
-		return 0, err
-	} else if n != 64 {
-		panic("read less than 64 bytes from HID")
-	}
-	// parse header
-	channelID := binary.BigEndian.Uint16(hf.buf[:2])
-	commandTag := hf.buf[2]
-	seq := binary.BigEndian.Uint16(hf.buf[3:5])
-	if channelID != 0x0101 {
-		return 0, fmt.Errorf("bad channel ID 0x%x", channelID)
-	} else if commandTag != 0x05 {
-		return 0, fmt.Errorf("bad command tag 0x%x", commandTag)
-	} else if seq != hf.seq {
-		return 0, fmt.Errorf("bad sequence number %v (expected %v)", seq, hf.seq)
-	}
-	hf.seq++
-	// start filling p
-	n := copy(p, hf.buf[5:])
-	hf.pos = 5 + n
-	return n, nil
 }
 
 type APDU struct {
@@ -96,7 +109,7 @@ type APDU struct {
 
 type apduFramer struct {
 	hf  *hidFramer
-	buf [2]byte // to read APDU length prefix
+	buf [4]byte // to read APDU length prefix - 4 bytes needed for tcp, only 2 for HID
 }
 
 func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
@@ -114,14 +127,25 @@ func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
 		return nil, err
 	}
 
-	// read APDU length
-	if _, err := io.ReadFull(af.hf, af.buf[:]); err != nil {
-		return nil, err
+	var respLen int
+	if TCP {
+		// read APDU length
+		if _, err := io.ReadFull(af.hf, af.buf[:4]); err != nil {
+			return nil, err
+		}
+		// +2 for status word code - see https://github.com/LedgerHQ/ledgercomm/blob/master/ledgercomm/interfaces/tcp_client.py#L89
+		respLen = int(binary.BigEndian.Uint32(af.buf[:4]) + 2)
+	} else {
+		// read APDU length
+		if _, err := io.ReadFull(af.hf, af.buf[:2]); err != nil {
+			return nil, err
+		}
+		respLen = int(binary.BigEndian.Uint16(af.buf[:2]))
 	}
-	// read APDU payload
-	respLen := binary.BigEndian.Uint16(af.buf[:2])
 	resp := make([]byte, respLen)
+	// read APDU payload
 	_, err := io.ReadFull(af.hf, resp)
+
 	if DEBUG {
 		fmt.Println("HID =>", hex.EncodeToString(resp))
 	}
@@ -284,7 +308,7 @@ func (n *Nano) SignTxn(txn types.Transaction, sigIndex uint16, keyIndex uint32) 
 	return
 }
 
-func OpenNano() (*Nano, error) {
+func OpenNanoHID() (*Nano, error) {
 	const (
 		ledgerVendorID       = 0x2c97
 		ledgerNanoSProductID = 0x0001
@@ -323,6 +347,24 @@ func OpenNano() (*Nano, error) {
 	}, nil
 }
 
+func OpenNano(apduTcpServer string) (*Nano, error) {
+	// if we aren't given a tcp server to connect to, connect over USB
+	if !TCP {
+		return OpenNanoHID()
+	}
+	connection, err := net.Dial("tcp", apduTcpServer)
+	if err != nil {
+		return nil, err
+	}
+	return &Nano{
+		device: &apduFramer{
+			hf: &hidFramer{
+				rw: connection,
+			},
+		},
+	}, nil
+}
+
 func parseIndex(s string) uint32 {
 	index, err := strconv.ParseUint(s, 10, 32)
 	if err != nil {
@@ -344,6 +386,8 @@ Actions:
     txn             sign a transaction
 `
 	debugUsage = `print raw APDU exchanges`
+
+	tcpUsage = `instead of communicating over USB HID, communicate with specified host:port over TCP`
 
 	versionUsage = `Usage:
 	sialedger version
@@ -382,9 +426,12 @@ must set WholeTransaction = true.
 
 func main() {
 	log.SetFlags(0)
+
+	var apduTcpServer string
 	rootCmd := flagg.Root
 	rootCmd.Usage = flagg.SimpleUsage(rootCmd, rootUsage)
 	rootCmd.BoolVar(&DEBUG, "apdu", false, debugUsage)
+	rootCmd.StringVar(&apduTcpServer, "tcp", "", tcpUsage)
 
 	versionCmd := flagg.New("version", versionUsage)
 	addrCmd := flagg.New("addr", addrUsage)
@@ -405,10 +452,14 @@ func main() {
 	})
 	args := cmd.Args()
 
+	if apduTcpServer != "" {
+		TCP = true
+	}
+
 	var nano *Nano
 	if cmd != rootCmd && cmd != versionCmd {
 		var err error
-		nano, err = OpenNano()
+		nano, err = OpenNano(apduTcpServer)
 		if err != nil {
 			log.Fatalln("Couldn't open device:", err)
 		}
@@ -424,7 +475,7 @@ func main() {
 	case versionCmd:
 		// try to get Nano S app version
 		var appVersion string
-		nano, err := OpenNano()
+		nano, err := OpenNano(apduTcpServer)
 		if err != nil {
 			appVersion = "(could not connect to Nano S or X)"
 		} else if appVersion, err = nano.GetVersion(); err != nil {
