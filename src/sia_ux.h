@@ -70,9 +70,3 @@ void io_exchange_with_code(uint16_t code, uint16_t tx);
 
 // standard "reject" function so we don't repeat code
 unsigned int io_seproxyhal_cancel(void);
-
-#ifdef TARGET_NANOX
-#define paging_reset ux_layout_bnnn_paging_reset
-#else
-#define paging_reset ux_layout_paging_reset
-#endif

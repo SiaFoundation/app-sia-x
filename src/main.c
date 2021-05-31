@@ -316,6 +316,14 @@ static void sia_main(void) {
 				if (!handlerFn) {
 					THROW(0x6D00);
 				}
+
+				// without calling this, pagination will always begin on the last page if a paginated menu has been scrolled through before during the session
+				#ifdef TARGET_NANOX
+				ux_layout_bnnn_paging_reset();
+				#else
+				ux_layout_paging_reset();
+				#endif
+
 				handlerFn(G_io_apdu_buffer[OFFSET_P1], G_io_apdu_buffer[OFFSET_P2],
 				          G_io_apdu_buffer + OFFSET_CDATA, G_io_apdu_buffer[OFFSET_LC], &flags, &tx);
 			}

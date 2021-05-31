@@ -159,7 +159,6 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
         memmove(ctx->keyStr + 5 + n, "?", 2);
     }
 
-    paging_reset();
     ux_flow_init(0, ux_approve_pk_flow, NULL);
 
     *flags |= IO_ASYNCH_REPLY;

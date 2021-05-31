@@ -93,7 +93,6 @@ void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *buffer, uint16_t len,
     // Prepare to display the comparison screen by converting the hash to hex
     bin2hex(ctx->hexHash, ctx->hash, sizeof(ctx->hash));
 
-	paging_reset();
     ux_flow_init(0, ux_approve_hash_flow, NULL);
 
     *flags |= IO_ASYNCH_REPLY;
