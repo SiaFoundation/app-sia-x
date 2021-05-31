@@ -272,6 +272,9 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 	// Add the new data to transaction decoder.
 	txn_update(&ctx->txn, dataBuffer, dataLength);
 
+	// without calling this, pagination will always begin on the last page if a paginated menu has been scrolled through before during the session
+	paging_reset();
+
 	// Attempt to decode the next element of the transaction. Note that this
 	// code is essentially identical to ui_calcTxnHash_elem_button. Sadly,
 	// there doesn't seem to be a clean way to avoid this duplication.

@@ -22,7 +22,10 @@ import (
 )
 
 var DEBUG bool
-var TCP bool
+
+type apduExchanger interface {
+	Exchange(apdu APDU) ([]byte, error)
+}
 
 type hidFramer struct {
 	rw  io.ReadWriter
@@ -39,65 +42,54 @@ func (hf *hidFramer) Write(p []byte) (int, error) {
 	if DEBUG {
 		fmt.Println("HID <=", hex.EncodeToString(p))
 	}
-	if TCP {
-		// IO over TCP works slightly differently - see https://github.com/LedgerHQ/ledgercomm/blob/master/ledgercomm/interfaces/tcp_client.py#L74
-		lenBuf := make([]byte, 4)
-		binary.BigEndian.PutUint32(lenBuf, uint32(len(p)))
-		hf.rw.Write(append(lenBuf, p...))
-	} else {
-		// split into 64-byte chunks
-		chunk := make([]byte, 64)
-		binary.BigEndian.PutUint16(chunk[:2], 0x0101)
-		chunk[2] = 0x05
-		var seq uint16
-		buf := new(bytes.Buffer)
-		binary.Write(buf, binary.BigEndian, uint16(len(p)))
-		buf.Write(p)
-		for buf.Len() > 0 {
-			binary.BigEndian.PutUint16(chunk[3:5], seq)
-			n, _ := buf.Read(chunk[5:])
-			if n, err := hf.rw.Write(chunk[:5+n]); err != nil {
-				return n, err
-			}
-			seq++
+	// split into 64-byte chunks
+	chunk := make([]byte, 64)
+	binary.BigEndian.PutUint16(chunk[:2], 0x0101)
+	chunk[2] = 0x05
+	var seq uint16
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.BigEndian, uint16(len(p)))
+	buf.Write(p)
+	for buf.Len() > 0 {
+		binary.BigEndian.PutUint16(chunk[3:5], seq)
+		n, _ := buf.Read(chunk[5:])
+		if n, err := hf.rw.Write(chunk[:5+n]); err != nil {
+			return n, err
 		}
+		seq++
 	}
 	return len(p), nil
 }
 
 func (hf *hidFramer) Read(p []byte) (int, error) {
-	if TCP {
-		return hf.rw.Read(p)
-	} else {
-		if hf.seq > 0 && hf.pos != 64 {
-			// drain buf
-			n := copy(p, hf.buf[hf.pos:])
-			hf.pos += n
-			return n, nil
-		}
-		// read next 64-byte packet
-		if n, err := hf.rw.Read(hf.buf[:]); err != nil {
-			return 0, err
-		} else if n != 64 {
-			panic("read less than 64 bytes from HID")
-		}
-		// parse header
-		channelID := binary.BigEndian.Uint16(hf.buf[:2])
-		commandTag := hf.buf[2]
-		seq := binary.BigEndian.Uint16(hf.buf[3:5])
-		if channelID != 0x0101 {
-			return 0, fmt.Errorf("bad channel ID 0x%x", channelID)
-		} else if commandTag != 0x05 {
-			return 0, fmt.Errorf("bad command tag 0x%x", commandTag)
-		} else if seq != hf.seq {
-			return 0, fmt.Errorf("bad sequence number %v (expected %v)", seq, hf.seq)
-		}
-		hf.seq++
-		// start filling p
-		n := copy(p, hf.buf[5:])
-		hf.pos = 5 + n
+	if hf.seq > 0 && hf.pos != 64 {
+		// drain buf
+		n := copy(p, hf.buf[hf.pos:])
+		hf.pos += n
 		return n, nil
 	}
+	// read next 64-byte packet
+	if n, err := hf.rw.Read(hf.buf[:]); err != nil {
+		return 0, err
+	} else if n != 64 {
+		panic("read less than 64 bytes from HID")
+	}
+	// parse header
+	channelID := binary.BigEndian.Uint16(hf.buf[:2])
+	commandTag := hf.buf[2]
+	seq := binary.BigEndian.Uint16(hf.buf[3:5])
+	if channelID != 0x0101 {
+		return 0, fmt.Errorf("bad channel ID 0x%x", channelID)
+	} else if commandTag != 0x05 {
+		return 0, fmt.Errorf("bad command tag 0x%x", commandTag)
+	} else if seq != hf.seq {
+		return 0, fmt.Errorf("bad sequence number %v (expected %v)", seq, hf.seq)
+	}
+	hf.seq++
+	// start filling p
+	n := copy(p, hf.buf[5:])
+	hf.pos = 5 + n
+	return n, nil
 }
 
 type APDU struct {
@@ -107,9 +99,13 @@ type APDU struct {
 	Payload []byte
 }
 
+func (apdu *APDU) Encode() []byte {
+	return append([]byte{apdu.CLA, apdu.INS, apdu.P1, apdu.P2, byte(len(apdu.Payload))}, apdu.Payload...)
+}
+
 type apduFramer struct {
 	hf  *hidFramer
-	buf [4]byte // to read APDU length prefix - 4 bytes needed for tcp, only 2 for HID
+	buf [2]byte // to read APDU length prefix
 }
 
 func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
@@ -127,33 +123,46 @@ func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
 		return nil, err
 	}
 
-	var respLen int
-	if TCP {
-		// read APDU length
-		if _, err := io.ReadFull(af.hf, af.buf[:4]); err != nil {
-			return nil, err
-		}
-		// +2 for status word code - see https://github.com/LedgerHQ/ledgercomm/blob/master/ledgercomm/interfaces/tcp_client.py#L89
-		respLen = int(binary.BigEndian.Uint32(af.buf[:4]) + 2)
-	} else {
-		// read APDU length
-		if _, err := io.ReadFull(af.hf, af.buf[:2]); err != nil {
-			return nil, err
-		}
-		respLen = int(binary.BigEndian.Uint16(af.buf[:2]))
+	// read APDU length
+	if _, err := io.ReadFull(af.hf, af.buf[:]); err != nil {
+		return nil, err
 	}
-	resp := make([]byte, respLen)
 	// read APDU payload
+	respLen := binary.BigEndian.Uint16(af.buf[:])
+	resp := make([]byte, respLen)
 	_, err := io.ReadFull(af.hf, resp)
-
 	if DEBUG {
 		fmt.Println("HID =>", hex.EncodeToString(resp))
 	}
 	return resp, err
 }
 
+type tcpExchanger struct {
+	conn net.Conn
+	buf  [4]byte
+}
+
+func (e *tcpExchanger) Exchange(apdu APDU) ([]byte, error) {
+	encoded := apdu.Encode()
+
+	var lenBuf [4]byte
+	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(encoded)))
+	if _, err := e.conn.Write(lenBuf[:]); err != nil {
+		return nil, err
+	}
+	if _, err := e.conn.Write(encoded); err != nil {
+		return nil, err
+	} else if _, err := io.ReadFull(e.conn, e.buf[:]); err != nil {
+		return nil, err
+	}
+	respLen := int(binary.BigEndian.Uint32(e.buf[:]) + 2)
+	resp := make([]byte, respLen)
+	_, err := io.ReadFull(e.conn, resp)
+	return resp, err
+}
+
 type Nano struct {
-	device *apduFramer
+	ex apduExchanger
 }
 
 type ErrCode uint16
@@ -170,7 +179,7 @@ var errUserRejected = errors.New("user denied request")
 var errInvalidParam = errors.New("invalid request parameters")
 
 func (n *Nano) Exchange(cmd byte, p1, p2 byte, data []byte) (resp []byte, err error) {
-	resp, err = n.device.Exchange(APDU{
+	resp, err = n.ex.Exchange(APDU{
 		CLA:     0xe0,
 		INS:     cmd,
 		P1:      p1,
@@ -339,7 +348,7 @@ func OpenNanoHID() (*Nano, error) {
 
 	// wrap raw device I/O in HID+APDU protocols
 	return &Nano{
-		device: &apduFramer{
+		ex: &apduFramer{
 			hf: &hidFramer{
 				rw: device,
 			},
@@ -349,18 +358,16 @@ func OpenNanoHID() (*Nano, error) {
 
 func OpenNano(apduTcpServer string) (*Nano, error) {
 	// if we aren't given a tcp server to connect to, connect over USB
-	if !TCP {
+	if apduTcpServer == "" {
 		return OpenNanoHID()
 	}
-	connection, err := net.Dial("tcp", apduTcpServer)
+	conn, err := net.Dial("tcp", apduTcpServer)
 	if err != nil {
 		return nil, err
 	}
 	return &Nano{
-		device: &apduFramer{
-			hf: &hidFramer{
-				rw: connection,
-			},
+		ex: &tcpExchanger{
+			conn: conn,
 		},
 	}, nil
 }
@@ -451,10 +458,6 @@ func main() {
 		},
 	})
 	args := cmd.Args()
-
-	if apduTcpServer != "" {
-		TCP = true
-	}
 
 	var nano *Nano
 	if cmd != rootCmd && cmd != versionCmd {
