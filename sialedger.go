@@ -113,13 +113,7 @@ func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
 		panic("APDU payload cannot exceed 255 bytes")
 	}
 	af.hf.Reset()
-	data := append([]byte{
-		apdu.CLA,
-		apdu.INS,
-		apdu.P1, apdu.P2,
-		byte(len(apdu.Payload)),
-	}, apdu.Payload...)
-	if _, err := af.hf.Write(data); err != nil {
+	if _, err := af.hf.Write(apdu.Encode()); err != nil {
 		return nil, err
 	}
 
