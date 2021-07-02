@@ -81,9 +81,13 @@ UX_FLOW(
 	&ux_approve_hash_flow_3_step
 );
 
-void handleSignHash(uint8_t p1, uint8_t p2, uint8_t *buffer, uint16_t len,
-                    /* out */ volatile unsigned int *flags,
-                    /* out */ volatile unsigned int *tx) {
+void handleSignHash(
+	uint8_t p1 __attribute__((unused)),
+	uint8_t p2 __attribute__((unused)),
+	uint8_t *buffer,
+	uint16_t len __attribute__((unused)),  // FIXME: should be used
+	/* out */ volatile unsigned int *flags,
+    /* out */ volatile unsigned int *tx __attribute__((unused))) {
     // Read the index of the signing key. U4LE is a helper macro for
     // converting a 4-byte buffer to a uint32_t.
     ctx->keyIndex = U4LE(buffer, 0);

@@ -113,6 +113,7 @@ static unsigned int io_seproxyhal_touch_txn_hash_ok(void) {
 	deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
 	io_exchange_with_code(SW_OK, 64);
 	ui_idle();
+	return 0;
 }
 
 // This is a helper function that prepares an element of the transaction for
@@ -232,7 +233,7 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
 // piece-wise to the user.
-void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx) {
+void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx __attribute__((unused))) {
 	if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
 		THROW(SW_INVALID_PARAM);
 	}

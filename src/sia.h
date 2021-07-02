@@ -51,7 +51,7 @@ typedef struct {
 
 	uint8_t outVal[128]; // most-recently-seen currency value, in decimal
 	uint8_t valLen;      // length of outVal
-	uint8_t outAddr[77]; // most-recently-seen address
+	char outAddr[77]; // most-recently-seen address
 } txn_state_t;
 
 // txn_init initializes a transaction decoder, preparing it to calculate the
@@ -69,22 +69,22 @@ void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);
 txnDecoderState_e txn_next_elem(txn_state_t *txn);
 
 // bin2hex converts binary to hex and appends a final NUL byte.
-void bin2hex(uint8_t *dst, uint8_t *data, uint64_t inlen);
+void bin2hex(char *dst, const uint8_t *data, uint64_t inlen);
 
 // bin2dec converts an unsigned integer to a decimal string and appends a
 // final NUL byte. It returns the length of the string.
-int bin2dec(uint8_t *dst, uint64_t n);
+int bin2dec(char *dst, uint64_t n);
 
 // formatSC converts a decimal string from Hastings to Siacoins. It returns the
 // new length of the string.
-int formatSC(uint8_t *buf, uint8_t decLen);
+int formatSC(char *buf, uint8_t decLen);
 
 // extractPubkeyBytes converts a Ledger-style public key to a Sia-friendly
 // 32-byte array.
-void extractPubkeyBytes(unsigned char *dst, cx_ecfp_public_key_t *publicKey);
+void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKey);
 
 // pubkeyToSiaAddress converts a Ledger pubkey to a Sia wallet address.
-void pubkeyToSiaAddress(uint8_t *dst, cx_ecfp_public_key_t *publicKey);
+void pubkeyToSiaAddress(char *dst, const cx_ecfp_public_key_t *publicKey);
 
 // deriveSiaKeypair derives an Ed25519 key pair from an index and the Ledger
 // seed. Either privateKey or publicKey may be NULL.

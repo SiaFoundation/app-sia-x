@@ -8,15 +8,15 @@ typedef struct {
 	uint32_t keyIndex;
 	bool genAddr;
 	// NUL-terminated strings for display
-	uint8_t typeStr[40]; // variable-length
-	uint8_t keyStr[40]; // variable-length
-	uint8_t fullStr[77]; // variable length
+	char typeStr[40]; // variable-length
+	char keyStr[40]; // variable-length
+	char fullStr[77]; // variable length
 } getPublicKeyContext_t;
 
 typedef struct {
 	uint32_t keyIndex;
 	uint8_t hash[32];
-	uint8_t hexHash[64];
+	char hexHash[64];
 } signHashContext_t;
 
 typedef struct {
@@ -24,9 +24,9 @@ typedef struct {
 	bool sign;
 	uint8_t elemPart; // screen index of elements
 	txn_state_t txn;
-	// NUL-terminated strings for display
-	uint8_t labelStr[40]; // variable length
-	uint8_t fullStr[128]; // variable length
+	// NULL-terminated strings for display
+	char labelStr[40]; // variable length
+	char fullStr[128]; // variable length
 	bool initialized; // protects against certain attacks
 } calcTxnHashContext_t;
 

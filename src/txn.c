@@ -143,7 +143,7 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
 	seek(txn, valLen);
 }
 
-static void readHash(txn_state_t *txn, uint8_t *outAddr) {
+static void readHash(txn_state_t *txn, char *outAddr) {
 	need_at_least(txn, 32);
 	if (outAddr) {
 		bin2hex(outAddr, txn->buf+txn->pos, 32);
