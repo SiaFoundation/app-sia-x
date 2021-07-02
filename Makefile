@@ -86,7 +86,7 @@ endif
 ##############
 
 CC := $(CLANGPATH)clang
-CFLAGS += -O3 -Os -I/usr/include
+CFLAGS += -O3 -Os
 
 AS := $(GCCPATH)arm-none-eabi-gcc
 LD := $(GCCPATH)arm-none-eabi-gcc
