@@ -22,8 +22,8 @@ void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp
 	if (privateKey) {
 		*privateKey = pk;
 	}
-	memset(keySeed, 0, sizeof(keySeed));
-	memset(&pk, 0, sizeof(pk));
+	explicit_bzero(keySeed, sizeof(keySeed));
+	explicit_bzero(&pk, sizeof(pk));
 }
 
 void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKey) {
@@ -39,7 +39,7 @@ void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
 	cx_ecfp_private_key_t privateKey;
 	deriveSiaKeypair(index, &privateKey, NULL);
 	cx_eddsa_sign(&privateKey, CX_RND_RFC6979 | CX_LAST, CX_SHA512, hash, 32, NULL, 0, dst, 64, NULL);
-	memset(&privateKey, 0, sizeof(privateKey));
+	explicit_bzero(&privateKey, sizeof(privateKey));
 }
 
 void bin2hex(char *dst, const uint8_t *data, uint64_t inlen) {
