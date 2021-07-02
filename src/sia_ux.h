@@ -13,10 +13,12 @@ typedef struct {
 	char fullStr[77]; // variable length
 } getPublicKeyContext_t;
 
+#define SIA_HASH_SIZE 32
+
 typedef struct {
 	uint32_t keyIndex;
-	uint8_t hash[32];
-	char hexHash[64];
+	uint8_t hash[SIA_HASH_SIZE];
+	char hexHash[SIA_HASH_SIZE * 2];
 } signHashContext_t;
 
 typedef struct {

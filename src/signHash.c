@@ -85,17 +85,21 @@ void handleSignHash(
 	uint8_t p1 __attribute__((unused)),
 	uint8_t p2 __attribute__((unused)),
 	uint8_t *buffer,
-	uint16_t len __attribute__((unused)),  // FIXME: should be used
+	uint16_t len,
 	/* out */ volatile unsigned int *flags,
-    /* out */ volatile unsigned int *tx __attribute__((unused))) {
+	/* out */ volatile unsigned int *tx __attribute__((unused))) {
+
+	if (len != sizeof(uint32_t) + SIA_HASH_SIZE) {
+		THROW(SW_INVALID_PARAM);
+	}
     // Read the index of the signing key. U4LE is a helper macro for
     // converting a 4-byte buffer to a uint32_t.
     ctx->keyIndex = U4LE(buffer, 0);
     // Read the hash.
-    memmove(ctx->hash, buffer + 4, sizeof(ctx->hash));
+    memcpy(ctx->hash, buffer + sizeof(uint32_t), SIA_HASH_SIZE);
 
     // Prepare to display the comparison screen by converting the hash to hex
-    bin2hex(ctx->hexHash, ctx->hash, sizeof(ctx->hash));
+    bin2hex(ctx->hexHash, ctx->hash, SIA_HASH_SIZE);
 
     ux_flow_init(0, ux_approve_hash_flow, NULL);
 
