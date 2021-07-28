@@ -27,6 +27,7 @@
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
+#include "txn.h"
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 

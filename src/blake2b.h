@@ -1,3 +1,4 @@
+#include "os.h"
 #include "cx.h"
 
 // blake2b_init initializes a 256-bit unkeyed BLAKE2B hash.
