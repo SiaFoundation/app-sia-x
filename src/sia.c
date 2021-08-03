@@ -22,11 +22,11 @@ void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp
 	if (privateKey) {
 		*privateKey = pk;
 	}
-	memset(keySeed, 0, sizeof(keySeed));
-	memset(&pk, 0, sizeof(pk));
+	explicit_bzero(keySeed, sizeof(keySeed));
+	explicit_bzero(&pk, sizeof(pk));
 }
 
-void extractPubkeyBytes(unsigned char *dst, cx_ecfp_public_key_t *publicKey) {
+void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKey) {
 	for (int i = 0; i < 32; i++) {
 		dst[i] = publicKey->W[64 - i];
 	}
@@ -39,10 +39,10 @@ void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
 	cx_ecfp_private_key_t privateKey;
 	deriveSiaKeypair(index, &privateKey, NULL);
 	cx_eddsa_sign(&privateKey, CX_RND_RFC6979 | CX_LAST, CX_SHA512, hash, 32, NULL, 0, dst, 64, NULL);
-	memset(&privateKey, 0, sizeof(privateKey));
+	explicit_bzero(&privateKey, sizeof(privateKey));
 }
 
-void bin2hex(uint8_t *dst, uint8_t *data, uint64_t inlen) {
+void bin2hex(char *dst, const uint8_t *data, uint64_t inlen) {
 	static uint8_t const hex[] = "0123456789abcdef";
 	for (uint64_t i = 0; i < inlen; i++) {
 		dst[2*i+0] = hex[(data[i]>>4) & 0x0F];
@@ -51,7 +51,7 @@ void bin2hex(uint8_t *dst, uint8_t *data, uint64_t inlen) {
 	dst[2*inlen] = '\0';
 }
 
-void pubkeyToSiaAddress(uint8_t *dst, cx_ecfp_public_key_t *publicKey) {
+void pubkeyToSiaAddress(char *dst, const cx_ecfp_public_key_t *publicKey) {
 	// A Sia address is the Merkle root of a set of unlock conditions.
 	// For a "standard" address, the unlock conditions are:
 	//
@@ -108,7 +108,7 @@ void pubkeyToSiaAddress(uint8_t *dst, cx_ecfp_public_key_t *publicKey) {
 	bin2hex(dst+64, checksum, sizeof(checksum));
 }
 
-int bin2dec(uint8_t *dst, uint64_t n) {
+int bin2dec(char *dst, uint64_t n) {
 	if (n == 0) {
 		dst[0] = '0';
 		dst[1] = '\0';
@@ -130,7 +130,7 @@ int bin2dec(uint8_t *dst, uint64_t n) {
 
 #define SC_ZEROS 24
 
-int formatSC(uint8_t *buf, uint8_t decLen) {
+int formatSC(char *buf, uint8_t decLen) {
 	if (decLen < SC_ZEROS+1) {
 		// if < 1 SC, pad with leading zeros
 		memmove(buf + (SC_ZEROS-decLen)+2, buf, decLen+1);

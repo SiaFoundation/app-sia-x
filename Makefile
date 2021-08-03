@@ -33,7 +33,7 @@ ICONNAME=nanos_app_sia.gif
 endif
 
 # The --path argument here restricts which BIP32 paths the app is allowed to derive.
-APP_LOAD_PARAMS = --path "44'/93'" --curve secp256k1 --curve ed25519 $(COMMON_LOAD_PARAMS)
+APP_LOAD_PARAMS = --path "44'/93'" --curve ed25519 $(COMMON_LOAD_PARAMS)
 ifeq ($(TARGET_NAME),TARGET_NANOS)
 APP_LOAD_PARAMS += --appFlags 0x40
 else ifeq ($(TARGET_NAME),TARGET_NANOX)
@@ -86,7 +86,7 @@ endif
 ##############
 
 CC := $(CLANGPATH)clang
-CFLAGS += -O3 -Os -I/usr/include
+CFLAGS += -O3 -Os
 
 AS := $(GCCPATH)arm-none-eabi-gcc
 LD := $(GCCPATH)arm-none-eabi-gcc

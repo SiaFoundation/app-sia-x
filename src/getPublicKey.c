@@ -22,6 +22,7 @@
 #include <os_io_seproxyhal.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "blake2b.h"
 #include "sia.h"
@@ -57,7 +58,7 @@ unsigned int io_seproxyhal_touch_pk_ok(void) {
     deriveSiaKeypair(ctx->keyIndex, NULL, &publicKey);
     extractPubkeyBytes(G_io_apdu_buffer + tx, &publicKey);
     tx += 32;
-    pubkeyToSiaAddress(G_io_apdu_buffer + tx, &publicKey);
+    pubkeyToSiaAddress((char *) G_io_apdu_buffer + tx, &publicKey);
     tx += 76;
 
     // Flush the APDU buffer, sending the response.
