@@ -8,6 +8,13 @@ This is a guide on how to use the Sia app on a Ledger Nano device.  The Sia app 
     - Ledger device connected to computer via USB
     - Ledger Live open
 
+## Enable Developer Mode
+The Sia app for Ledger devices can only be installed in developer mode.  To enable developer mode, do the following:
+
+1. Open the **Settings** tab in Ledger Live
+2. Select the **Experimental Features** tab within settings
+3. Enable the option titled **Developer Mode**
+
 ## Install the Sia App
 
 1. Select the **Manager** tab in Ledger Live
