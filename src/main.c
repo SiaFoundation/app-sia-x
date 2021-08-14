@@ -131,7 +131,6 @@ bolos_ux_params_t G_ux_params;
 // by the computer instead of being initiated by the user. It typically just
 // contains an idle screen and a version screen.
 
-// this aligns better than "Waiting for commands"
 UX_STEP_NOCB(
 	ux_menu_ready_step,
 	nn,

@@ -127,7 +127,7 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 	switch (txn->elemType) {
 	case TXN_ELEM_SC_OUTPUT:
 		memmove(ctx->labelStr, "SC Output #", 11);
-		bin2dec(ctx->labelStr+16, txn->sliceIndex);
+		bin2dec(ctx->labelStr+16, txn->displayIndex);
 		// An element can have multiple screens. For each siacoin output, the
 		// user needs to see both the destination address and the amount.
 		// These are rendered in separate screens, and elemPart is used to
@@ -144,7 +144,7 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 
 	case TXN_ELEM_SF_OUTPUT:
 		memmove(ctx->labelStr, "SF Output #", 11);
-		bin2dec(ctx->labelStr+16, txn->sliceIndex);
+		bin2dec(ctx->labelStr+16, txn->displayIndex);
 		if (ctx->elemPart == 0) {
 			memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
 			ctx->elemPart++;
@@ -208,7 +208,6 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
 				memmove(ctx->fullStr, "with key #", 10);
 				memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
 			    ux_flow_init(0, ux_sign_txn_flow, NULL);
-
 			} else {
 				// If we're just computing the hash, send it immediately and
 				// display the comparison screen
@@ -250,14 +249,16 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 		}
 		ctx->initialized = true;
 
-		// If this is the first packet, it will include the key index and sig
-		// index in addition to the transaction data. Use these to initialize
-		// the ctx and the transaction decoder.
+		// If this is the first packet, it will include the key index, sig
+		// index, and change index in addition to the transaction data. Use
+		// these to initialize the ctx and the transaction decoder.
 		ctx->keyIndex = U4LE(dataBuffer, 0); // NOTE: ignored if !ctx->sign
 		dataBuffer += 4; dataLength -= 4;
 		uint16_t sigIndex = U2LE(dataBuffer, 0);
 		dataBuffer += 2; dataLength -= 2;
-		txn_init(&ctx->txn, sigIndex);
+		uint32_t changeIndex = U4LE(dataBuffer, 0);
+		dataBuffer += 4; dataLength -= 4;
+		txn_init(&ctx->txn, sigIndex, changeIndex);
 
 		// Set ctx->sign according to P2.
 		ctx->sign = (p2 & P2_SIGN_HASH);

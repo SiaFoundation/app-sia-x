@@ -265,10 +265,11 @@ func (n *Nano) SignHash(hash [32]byte, keyIndex uint32) (sig [64]byte, err error
 	return
 }
 
-func (n *Nano) CalcTxnHash(txn types.Transaction, sigIndex uint16) (hash [32]byte, err error) {
+func (n *Nano) CalcTxnHash(txn types.Transaction, sigIndex uint16, changeIndex uint32) (hash [32]byte, err error) {
 	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, uint32(0)) // keyIndex
+	binary.Write(buf, binary.LittleEndian, uint32(0)) // keyIndex; ignored since we are not signing
 	binary.Write(buf, binary.LittleEndian, sigIndex)
+	binary.Write(buf, binary.LittleEndian, changeIndex)
 	txn.MarshalSia(buf)
 
 	var resp []byte
@@ -288,10 +289,11 @@ func (n *Nano) CalcTxnHash(txn types.Transaction, sigIndex uint16) (hash [32]byt
 	return
 }
 
-func (n *Nano) SignTxn(txn types.Transaction, sigIndex uint16, keyIndex uint32) (sig [64]byte, err error) {
+func (n *Nano) SignTxn(txn types.Transaction, sigIndex uint16, keyIndex, changeIndex uint32) (sig [64]byte, err error) {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, keyIndex)
 	binary.Write(buf, binary.LittleEndian, sigIndex)
+	binary.Write(buf, binary.LittleEndian, changeIndex)
 	txn.MarshalSia(buf)
 
 	var resp []byte
@@ -315,7 +317,6 @@ func OpenNanoHID() (*Nano, error) {
 	const (
 		ledgerVendorID       = 0x2c97
 		ledgerNanoSProductID = 0x0001
-		// https://github.com/LedgerHQ/nanox-secure-sdk/blob/abe9a1bedd2e7226e591d30b568933d6cd78f0ff/lib_stusb_impl/usbd_impl.c#L171
 		ledgerNanoXProductID = 0x0004
 	)
 
@@ -422,7 +423,8 @@ Calculates and signs the hash of a transaction using the private key with the
 specified key index. The CoveredFields of the specified TransactionSignature
 must set WholeTransaction = true.
 `
-	txnHashUsage = `calculate the transaction hash, but do not sign it`
+	txnHashUsage        = `calculate the transaction hash, but do not sign it`
+	txnChangeIndexUsage = `key index of the transaction's change address`
 )
 
 func main() {
@@ -440,6 +442,7 @@ func main() {
 	hashCmd := flagg.New("hash", hashUsage)
 	txnCmd := flagg.New("txn", txnUsage)
 	txnHash := txnCmd.Bool("sighash", false, txnHashUsage)
+	txnChangeIndex := txnCmd.Uint64("changeIndex", math.MaxUint32, txnChangeIndexUsage)
 
 	cmd := flagg.Parse(flagg.Tree{
 		Cmd: rootCmd,
@@ -541,13 +544,13 @@ func main() {
 		sigIndex := uint16(parseIndex(args[1]))
 
 		if *txnHash {
-			sighash, err := nano.CalcTxnHash(txn, sigIndex)
+			sighash, err := nano.CalcTxnHash(txn, sigIndex, uint32(*txnChangeIndex))
 			if err != nil {
 				log.Fatalln("Couldn't get hash:", err)
 			}
 			fmt.Println(hex.EncodeToString(sighash[:]))
 		} else {
-			sig, err := nano.SignTxn(txn, sigIndex, parseIndex(args[2]))
+			sig, err := nano.SignTxn(txn, sigIndex, parseIndex(args[2]), uint32(*txnChangeIndex))
 			if err != nil {
 				log.Fatalln("Couldn't get signature:", err)
 			}

@@ -203,6 +203,7 @@ static void __txn_next_elem(txn_state_t *txn) {
 		}
 		txn->sliceLen = readInt(txn);
 		txn->sliceIndex = 0;
+		txn->displayIndex = 0;
 		txn->elemType++;
 		advance(txn);
 
@@ -220,6 +221,11 @@ static void __txn_next_elem(txn_state_t *txn) {
 		readHash(txn, txn->outAddr);    // UnlockHash
 		advance(txn);
 		txn->sliceIndex++;
+		if (!memcmp(txn->outAddr, txn->changeAddr, sizeof(txn->outAddr))) {
+			// do not display the change address or increment displayIndex
+			return;
+		}
+		txn->displayIndex++;
 		THROW(TXN_STATE_READY);
 
 	case TXN_ELEM_SF_OUTPUT:
@@ -228,6 +234,7 @@ static void __txn_next_elem(txn_state_t *txn) {
 		readCurrency(txn, NULL);        // ClaimStart
 		advance(txn);
 		txn->sliceIndex++;
+		txn->displayIndex++;
 		THROW(TXN_STATE_READY);
 
 	case TXN_ELEM_MINER_FEE:
@@ -309,11 +316,15 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn) {
 	return result;
 }
 
-void txn_init(txn_state_t *txn, uint16_t sigIndex) {
+void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
 	memset(txn, 0, sizeof(txn_state_t));
-	txn->buflen = txn->pos = txn->sliceIndex = txn->sliceLen = txn->valLen = 0;
+	txn->buflen = txn->pos = txn->sliceIndex = txn->displayIndex = txn->sliceLen = txn->valLen = 0;
 	txn->elemType = -1; // first increment brings it to SC_INPUT
 	txn->sigIndex = sigIndex;
+
+	cx_ecfp_public_key_t publicKey = {0};
+	deriveSiaKeypair(changeIndex, NULL, &publicKey);
+	pubkeyToSiaAddress(&txn->changeAddr, &publicKey);
 
 	// initialize hash state
 	blake2b_init(&txn->blake);
