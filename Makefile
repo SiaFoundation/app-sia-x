@@ -25,7 +25,7 @@ include $(BOLOS_SDK)/Makefile.defines
 #########
 
 APPNAME    = Sia
-APPVERSION = 0.4.4
+APPVERSION = 0.4.5
 ifeq ($(TARGET_NAME), TARGET_NANOX)
 ICONNAME=nanox_app_sia.gif
 else
