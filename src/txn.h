@@ -40,19 +40,21 @@ typedef struct {
 	txnElemType_e elemType; // type of most-recently-seen element
 	uint64_t sliceLen;      // most-recently-seen slice length prefix
 	uint16_t sliceIndex;    // offset within current element slice
+	uint16_t displayIndex;  // index of element being displayed
 
 	uint16_t sigIndex;   // index of TxnSig being computed
 	cx_blake2b_t blake;  // hash state
 	uint8_t sigHash[32]; // buffer to hold final hash
 
-	uint8_t outVal[128]; // most-recently-seen currency value, in decimal
-	uint8_t valLen;      // length of outVal
-	char outAddr[77]; // most-recently-seen address
+	uint8_t outVal[128];    // most-recently-seen currency value, in decimal
+	uint8_t valLen;         // length of outVal
+	uint8_t outAddr[77];    // most-recently-seen address
+	uint8_t changeAddr[77]; // change address
 } txn_state_t;
 
 // txn_init initializes a transaction decoder, preparing it to calculate the
 // requested SigHash.
-void txn_init(txn_state_t *txn, uint16_t sigIndex);
+void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex);
 
 // txn_update adds data to a transaction decoder.
 void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);

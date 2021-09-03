@@ -91,7 +91,7 @@ UX_FLOW(
 
 // We use one generic step for each element so we don't have to make
 // separate UX_FLOWs for SC outputs, SF outputs, miner fees, etc
-UX_STEP_VALID(
+UX_STEP_CB(
 	ux_show_txn_elem_1_step,
 	bnnn_paging,
 	ui_calcTxnHash_elem_button(),
@@ -127,7 +127,7 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 	switch (txn->elemType) {
 	case TXN_ELEM_SC_OUTPUT:
 		memmove(ctx->labelStr, "SC Output #", 11);
-		bin2dec(ctx->labelStr+16, txn->sliceIndex);
+		bin2dec(ctx->labelStr+11, txn->displayIndex);
 		// An element can have multiple screens. For each siacoin output, the
 		// user needs to see both the destination address and the amount.
 		// These are rendered in separate screens, and elemPart is used to
@@ -144,7 +144,7 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 
 	case TXN_ELEM_SF_OUTPUT:
 		memmove(ctx->labelStr, "SF Output #", 11);
-		bin2dec(ctx->labelStr+16, txn->sliceIndex);
+		bin2dec(ctx->labelStr+11, txn->displayIndex);
 		if (ctx->elemPart == 0) {
 			memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
 			ctx->elemPart++;
@@ -173,54 +173,53 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 }
 
 static unsigned int ui_calcTxnHash_elem_button(void) {
-		if (ctx->elemPart > 0) {
-			// We're in the middle of displaying a multi-part element; display
-			// the next part.
-			fmtTxnElem(ctx);
-		    ux_flow_init(0, ux_show_txn_elem_flow, NULL);
-		    return 0;
+	if (ctx->elemPart > 0) {
+		// We're in the middle of displaying a multi-part element; display
+		// the next part.
+		fmtTxnElem(ctx);
+		ux_flow_init(0, ux_show_txn_elem_flow, NULL);
+		return 0;
+	}
+	// Attempt to decode the next element in the transaction.
+	switch (txn_next_elem(&ctx->txn)) {
+	case TXN_STATE_ERR:
+		// The transaction is invalid.
+		io_exchange_with_code(SW_INVALID_PARAM, 0);
+		ui_idle();
+		break;
+	case TXN_STATE_PARTIAL:
+		// We don't have enough data to decode the next element; send an
+		// OK code to request more.
+		io_exchange_with_code(SW_OK, 0);
+		break;
+	case TXN_STATE_READY:
+		// We successively decoded one or more elements; display the first
+		// part of the first element.
+		ctx->elemPart = 0;
+		fmtTxnElem(ctx);
+		ux_flow_init(0, ux_show_txn_elem_flow, NULL);
+		break;
+	case TXN_STATE_FINISHED:
+		// We've finished decoding the transaction, and all elements have
+		// been displayed.
+		if (ctx->sign) {
+			// If we're signing the transaction, prepare and display the
+			// approval screen.
+			memmove(ctx->fullStr, "with key #", 10);
+			memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
+			ux_flow_init(0, ux_sign_txn_flow, NULL);
+		} else {
+			// If we're just computing the hash, send it immediately and
+			// display the comparison screen
+			memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
+			io_exchange_with_code(SW_OK, 32);
+			bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
+			ux_flow_init(0, ux_compare_hash_flow, NULL);
 		}
-		// Attempt to decode the next element in the transaction.
-		switch (txn_next_elem(&ctx->txn)) {
-		case TXN_STATE_ERR:
-			// The transaction is invalid.
-			io_exchange_with_code(SW_INVALID_PARAM, 0);
-			ui_idle();
-			break;
-		case TXN_STATE_PARTIAL:
-			// We don't have enough data to decode the next element; send an
-			// OK code to request more.
-			io_exchange_with_code(SW_OK, 0);
-			break;
-		case TXN_STATE_READY:
-			// We successively decoded one or more elements; display the first
-			// part of the first element.
-			ctx->elemPart = 0;
-			fmtTxnElem(ctx);
-		    ux_flow_init(0, ux_show_txn_elem_flow, NULL);
-			break;
-		case TXN_STATE_FINISHED:
-			// We've finished decoding the transaction, and all elements have
-			// been displayed.
-			if (ctx->sign) {
-				// If we're signing the transaction, prepare and display the
-				// approval screen.
-				memmove(ctx->fullStr, "with key #", 10);
-				memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
-			    ux_flow_init(0, ux_sign_txn_flow, NULL);
-
-			} else {
-				// If we're just computing the hash, send it immediately and
-				// display the comparison screen
-				memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
-				io_exchange_with_code(SW_OK, 32);
-				bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-				ux_flow_init(0, ux_compare_hash_flow, NULL);
-			}
-			// Reset the initialization state.
-			ctx->initialized = false;
-			break;
-		}
+		// Reset the initialization state.
+		ctx->initialized = false;
+		break;
+	}
 	return 0;
 }
 
@@ -250,14 +249,16 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 		}
 		ctx->initialized = true;
 
-		// If this is the first packet, it will include the key index and sig
-		// index in addition to the transaction data. Use these to initialize
-		// the ctx and the transaction decoder.
+		// If this is the first packet, it will include the key index, sig
+		// index, and change index in addition to the transaction data. Use
+		// these to initialize the ctx and the transaction decoder.
 		ctx->keyIndex = U4LE(dataBuffer, 0); // NOTE: ignored if !ctx->sign
 		dataBuffer += 4; dataLength -= 4;
 		uint16_t sigIndex = U2LE(dataBuffer, 0);
 		dataBuffer += 2; dataLength -= 2;
-		txn_init(&ctx->txn, sigIndex);
+		uint32_t changeIndex = U4LE(dataBuffer, 0);
+		dataBuffer += 4; dataLength -= 4;
+		txn_init(&ctx->txn, sigIndex, changeIndex);
 
 		// Set ctx->sign according to P2.
 		ctx->sign = (p2 & P2_SIGN_HASH);
