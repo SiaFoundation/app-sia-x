@@ -317,7 +317,7 @@ static void sia_main(void) {
 				}
 
 				// without calling this, pagination will always begin on the last page if a paginated menu has been scrolled through before during the session
-				#ifdef TARGET_NANOX
+				#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 				ux_layout_bnnn_paging_reset();
 				#else
 				ux_layout_paging_reset();
@@ -462,14 +462,14 @@ __attribute__((section(".boot"))) int main(void) {
 			TRY {
 				io_seproxyhal_init();
 
-#ifdef TARGET_NANOX
+#ifdef HAVE_BLE
 				G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
 #endif
 
 				USB_power(0);
 				USB_power(1);
 
-#ifdef TARGET_NANOX
+#ifdef HAVE_BLE
 				BLE_power(0, NULL);
 				BLE_power(1, "Nano X");
 #endif
