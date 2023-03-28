@@ -18,12 +18,12 @@
 // Keep this description in mind as you read through the implementation.
 
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <os_io_seproxyhal.h>
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
-#include <stdint.h>
-#include <stdbool.h>
 
 // Get a pointer to signHash's state variables. This is purely for
 // convenience, so that we can refer to these variables concisely from any
@@ -41,6 +41,7 @@ static unsigned int io_seproxyhal_touch_hash_ok(void) {
     return 0;
 }
 
+#ifdef HAVE_BAGL
 UX_STEP_NOCB(
 	ux_approve_hash_flow_1_step,
 	bnnn_paging,
@@ -80,6 +81,7 @@ UX_FLOW(
 	&ux_approve_hash_flow_2_step,
 	&ux_approve_hash_flow_3_step
 );
+#endif
 
 void handleSignHash(
 	uint8_t p1 __attribute__((unused)),
@@ -101,7 +103,9 @@ void handleSignHash(
     // Prepare to display the comparison screen by converting the hash to hex
     bin2hex(ctx->hexHash, ctx->hash, SIA_HASH_SIZE);
 
+#ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_hash_flow, NULL);
+#endif
 
     *flags |= IO_ASYNCH_REPLY;
 }

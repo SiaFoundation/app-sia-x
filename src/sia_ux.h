@@ -1,4 +1,8 @@
 #include <ux.h>
+#ifdef HAVE_NBGL
+#include <nbgl_use_case.h>
+#endif
+
 #include "txn.h"
 
 // Each command has some state associated with it that sticks around for the

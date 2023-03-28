@@ -102,15 +102,15 @@
 // - the main loop invokes command handlers, which display screens and set button handlers
 // - button handlers switch between screens and reply to the computer
 
-#include "os.h"
+#include <os.h>
 #include <os_io_seproxyhal.h>
-#include "glyphs.h"
+#include <ux.h>
+#include <glyphs.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
-#include <ux.h>
-#include <stdint.h>
-#include <stdbool.h>
 
 // You may notice that this file includes blake2b.h despite doing no hashing.
 // This is because the Sia app uses the Plan 9 convention for header files:
@@ -122,15 +122,20 @@
 // These are global variables declared in ux.h. They can't be defined there
 // because multiple files include ux.h; they need to be defined in exactly one
 // place. See ux.h for their descriptions.
-commandContext global;
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
+uint8_t G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+commandContext global;
 
 // Here we define the main menu, using the Ledger-provided menu API. This menu
 // turns out to be fairly unimportant for Nano S apps, since commands are sent
 // by the computer instead of being initiated by the user. It typically just
 // contains an idle screen and a version screen.
 
+void ui_idle(void);
+void ui_menu_about(void);
+
+#ifdef HAVE_BAGL
 UX_STEP_NOCB(
 	ux_menu_ready_step,
 	nn,
@@ -170,14 +175,6 @@ UX_FLOW(
     FLOW_LOOP
 );
 
-void ui_idle() {
-    if (G_ux.stack_count == 0) {
-        ux_stack_push();
-    }
-
-    ux_flow_init(0, ux_menu_main_flow, NULL);
-}
-
 UX_STEP_NOCB(
 	ux_menu_info_step,
 	bn,
@@ -206,9 +203,46 @@ UX_FLOW(
 	FLOW_LOOP
 );
 
-void ui_menu_about() {
+void ui_idle(void) {
+    if (G_ux.stack_count == 0) {
+        ux_stack_push();
+    }
+
+    ux_flow_init(0, ux_menu_main_flow, NULL);
+}
+
+void ui_menu_about(void) {
 	ux_flow_init(0, ux_menu_about_flow, NULL);
 }
+#else
+const nbgl_icon_details_t app_icon;
+
+static const char *const INFO_TYPES[] = {"Version"};
+static const char *const INFO_CONTENTS[] = {APPVERSION};
+
+static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
+    UNUSED(page);
+    content->type = INFOS_LIST;
+    content->infosList.nbInfos = 1;
+    content->infosList.infoTypes = (const char **)INFO_TYPES;
+    content->infosList.infoContents = (const char **)INFO_CONTENTS;
+    return true;
+}
+
+void app_quit(void) {
+    // exit app here
+    os_sched_exit(-1);
+}
+
+void ui_idle(void) {
+    nbgl_useCaseHome(APPNAME, &app_icon, NULL, false, ui_menu_about, app_quit);
+}
+
+void ui_menu_about(void) {
+	nbgl_useCaseSettings(APPNAME, 0, 1, false, ui_idle, nav_callback, NULL);
+}
+
+#endif
 
 // io_exchange_with_code is a helper function for sending response APDUs from
 // button handlers. Note that the IO_RETURN_AFTER_TX flag is set. 'tx' is the
@@ -277,6 +311,7 @@ static handler_fn_t* lookupHandler(uint8_t ins) {
 // and sent in the next io_exchange call.
 static void sia_main(void) {
 	// Mark the transaction context as uninitialized.
+	explicit_bzero(&global, sizeof(global));
 	global.calcTxnHashContext.initialized = false;
 
 	volatile unsigned int rx = 0;
@@ -319,7 +354,7 @@ static void sia_main(void) {
 				// without calling this, pagination will always begin on the last page if a paginated menu has been scrolled through before during the session
 				#ifdef TARGET_NANOX
 				ux_layout_bnnn_paging_reset();
-				#else
+				#elif HAVE_BAGL
 				ux_layout_paging_reset();
 				#endif
 
@@ -371,73 +406,77 @@ static void sia_main(void) {
 // with the simplest command, signHash.c.
 
 // override point, but nothing more to do
+#ifdef HAVE_BAGL
 void io_seproxyhal_display(const bagl_element_t *element) {
 	io_seproxyhal_display_default((bagl_element_t *)element);
 }
+#endif
 
-unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+uint8_t io_event(uint8_t channel) {
+    (void)channel;
 
-unsigned char io_event(unsigned char channel __attribute__((unused))) {
-	// can't have more than one tag in the reply, not supported yet.
-	switch (G_io_seproxyhal_spi_buffer[0]) {
-	case SEPROXYHAL_TAG_FINGER_EVENT:
-		UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
-		break;
+    switch (G_io_seproxyhal_spi_buffer[0]) {
+        case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
+#ifdef HAVE_BAGL
+            UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
+#endif  // HAVE_BAGL
+            break;
+        case SEPROXYHAL_TAG_STATUS_EVENT:
+            if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&  //
+                !(U4BE(G_io_seproxyhal_spi_buffer, 3) &      //
+                  SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
+                THROW(EXCEPTION_IO_RESET);
+            }
+            /* fallthrough */
+        case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
+#ifdef HAVE_BAGL
+            UX_DISPLAYED_EVENT({});
+#endif  // HAVE_BAGL
+#ifdef HAVE_NBGL
+            UX_DEFAULT_EVENT();
+#endif  // HAVE_NBGL
+            break;
+#ifdef HAVE_NBGL
+        case SEPROXYHAL_TAG_FINGER_EVENT:
+            UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
+            break;
+#endif  // HAVE_NBGL
+        case SEPROXYHAL_TAG_TICKER_EVENT:
+            UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
+            break;
+        default:
+            UX_DEFAULT_EVENT();
+            break;
+    }
 
-	case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
-		UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
-		break;
+    if (!io_seproxyhal_spi_is_status_sent()) {
+        io_seproxyhal_general_status();
+    }
 
-	case SEPROXYHAL_TAG_STATUS_EVENT:
-		if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&
-			!(U4BE(G_io_seproxyhal_spi_buffer, 3) &
-			  SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
-			THROW(EXCEPTION_IO_RESET);
-		}
-		UX_DEFAULT_EVENT();
-		break;
-
-	case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
-		UX_DISPLAYED_EVENT({});
-		break;
-
-	case SEPROXYHAL_TAG_TICKER_EVENT:
-		UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
-		break;
-
-	default:
-		UX_DEFAULT_EVENT();
-		break;
-	}
-
-	// close the event if not done previously (by a display or whatever)
-	if (!io_seproxyhal_spi_is_status_sent()) {
-		io_seproxyhal_general_status();
-	}
-
-	// command has been processed, DO NOT reset the current APDU transport
-	return 1;
+    return 1;
 }
 
-unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
-	switch (channel & ~(IO_FLAGS)) {
-	case CHANNEL_KEYBOARD:
-		break;
-	// multiplexed io exchange over a SPI channel and TLV encapsulated protocol
-	case CHANNEL_SPI:
-		if (tx_len) {
-			io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
-			if (channel & IO_RESET_AFTER_REPLIED) {
-				reset();
-			}
-			return 0; // nothing received from the master so far (it's a tx transaction)
-		} else {
-			return io_seproxyhal_spi_recv(G_io_apdu_buffer, sizeof(G_io_apdu_buffer), 0);
-		}
-	default:
-		THROW(INVALID_PARAMETER);
-	}
-	return 0;
+uint16_t io_exchange_al(uint8_t channel, uint16_t tx_len) {
+    switch (channel & ~(IO_FLAGS)) {
+        case CHANNEL_KEYBOARD:
+            break;
+        case CHANNEL_SPI:
+            if (tx_len) {
+                io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
+
+                if (channel & IO_RESET_AFTER_REPLIED) {
+                    halt();
+                }
+
+                return 0;
+            } else {
+                return io_seproxyhal_spi_recv(G_io_apdu_buffer, sizeof(G_io_apdu_buffer), 0);
+            }
+        default:
+            THROW(INVALID_PARAMETER);
+    }
+
+    return 0;
 }
 
 static void app_exit(void) {
@@ -462,16 +501,16 @@ __attribute__((section(".boot"))) int main(void) {
 			TRY {
 				io_seproxyhal_init();
 
-#if defined(TARGET_NANOX) || defined(TARGET_STAX)
+#ifdef HAVE_BLE
 				G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
 #endif
 
 				USB_power(0);
 				USB_power(1);
 
-#ifdef defined(TARGET_NANOX) || defined(TARGET_STAX)
+#if defined(TARGET_NANOX) || defined(TARGET_STAX)
 				BLE_power(0, NULL);
-				BLE_power(1, "Nano X");
+				BLE_power(1, NULL);
 #endif
 
 				ui_idle();
