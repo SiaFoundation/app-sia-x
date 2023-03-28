@@ -34,54 +34,41 @@
 #define P2_DISPLAY_PUBKEY 0x01
 
 // Get a pointer to getPublicKey's state variables.
-static getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
+static getPublicKeyContext_t* ctx = &global.getPublicKeyContext;
 
 static unsigned int io_seproxyhal_touch_pk_ok(void);
 
 #ifdef HAVE_BAGL
 // Allows scrolling through the address/public key
 UX_STEP_CB(
-	ux_compare_pk_flow_1_step,
-	bnnn_paging,
-	ui_idle(),
-	{
-		"Compare",
-		global.getPublicKeyContext.fullStr
-	}
-);
+    ux_compare_pk_flow_1_step,
+    bnnn_paging,
+    ui_idle(),
+    {"Compare",
+     global.getPublicKeyContext.fullStr});
 
 UX_FLOW(
-	ux_compare_pk_flow,
-	&ux_compare_pk_flow_1_step
-);
+    ux_compare_pk_flow,
+    &ux_compare_pk_flow_1_step);
 
 UX_STEP_NOCB(
     ux_approve_pk_flow_1_step, bn,
-     {
-        global.getPublicKeyContext.typeStr,
-        global.getPublicKeyContext.keyStr
-    }
-);
+    {global.getPublicKeyContext.typeStr,
+     global.getPublicKeyContext.keyStr});
 
 UX_STEP_VALID(
     ux_approve_pk_flow_2_step,
     pb,
     io_seproxyhal_touch_pk_ok(),
-    {
-        &C_icon_validate,
-        "Approve"
-    }
-);
+    {&C_icon_validate,
+     "Approve"});
 
 UX_STEP_VALID(
     ux_approve_pk_flow_3_step,
     pb,
     io_seproxyhal_cancel(),
-    {
-        &C_icon_crossmark,
-        "Reject"
-    }
-);
+    {&C_icon_crossmark,
+     "Reject"});
 
 // Flow for the public key/address menu:
 // #1 screen: "generate address/public key from key #x?"
@@ -91,8 +78,7 @@ UX_FLOW(
     ux_approve_pk_flow,
     &ux_approve_pk_flow_1_step,
     &ux_approve_pk_flow_2_step,
-    &ux_approve_pk_flow_3_step
-);
+    &ux_approve_pk_flow_3_step);
 
 #endif
 
@@ -107,7 +93,7 @@ static unsigned int io_seproxyhal_touch_pk_ok(void) {
     deriveSiaKeypair(ctx->keyIndex, NULL, &publicKey);
     extractPubkeyBytes(G_io_apdu_buffer + tx, &publicKey);
     tx += 32;
-    pubkeyToSiaAddress((char *) G_io_apdu_buffer + tx, &publicKey);
+    pubkeyToSiaAddress((char*)G_io_apdu_buffer + tx, &publicKey);
     tx += 76;
 
     // Flush the APDU buffer, sending the response.
