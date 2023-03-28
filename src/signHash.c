@@ -17,10 +17,11 @@
 //
 // Keep this description in mind as you read through the implementation.
 
-#include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <os_io_seproxyhal.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
+
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
@@ -43,57 +44,46 @@ static unsigned int io_seproxyhal_touch_hash_ok(void) {
 
 #ifdef HAVE_BAGL
 UX_STEP_NOCB(
-	ux_approve_hash_flow_1_step,
-	bnnn_paging,
-	{
-		"Compare Input:",
-		global.signHashContext.hexHash
-	}
-);
+    ux_approve_hash_flow_1_step,
+    bnnn_paging,
+    {"Compare Input:",
+     global.signHashContext.hexHash});
 
 UX_STEP_VALID(
-	ux_approve_hash_flow_2_step,
-	pb,
-	io_seproxyhal_touch_hash_ok(),
-	{
-		&C_icon_validate,
-		"Approve"
-	}
-);
+    ux_approve_hash_flow_2_step,
+    pb,
+    io_seproxyhal_touch_hash_ok(),
+    {&C_icon_validate,
+     "Approve"});
 
 UX_STEP_VALID(
-	ux_approve_hash_flow_3_step,
-	pb,
-	io_seproxyhal_cancel(),
-	{
-		&C_icon_crossmark,
-		"Reject"
-	}
-);
+    ux_approve_hash_flow_3_step,
+    pb,
+    io_seproxyhal_cancel(),
+    {&C_icon_crossmark,
+     "Reject"});
 
 // Flow for the signing hash menu:
 // #1 screen: the hash repeated for confirmation
 // #2 screen: approve
 // #3 screen: reject
 UX_FLOW(
-	ux_approve_hash_flow,
-	&ux_approve_hash_flow_1_step,
-	&ux_approve_hash_flow_2_step,
-	&ux_approve_hash_flow_3_step
-);
+    ux_approve_hash_flow,
+    &ux_approve_hash_flow_1_step,
+    &ux_approve_hash_flow_2_step,
+    &ux_approve_hash_flow_3_step);
 #endif
 
 void handleSignHash(
-	uint8_t p1 __attribute__((unused)),
-	uint8_t p2 __attribute__((unused)),
-	uint8_t *buffer,
-	uint16_t len,
-	/* out */ volatile unsigned int *flags,
-	/* out */ volatile unsigned int *tx __attribute__((unused))) {
-
-	if (len != sizeof(uint32_t) + SIA_HASH_SIZE) {
-		THROW(SW_INVALID_PARAM);
-	}
+    uint8_t p1 __attribute__((unused)),
+    uint8_t p2 __attribute__((unused)),
+    uint8_t *buffer,
+    uint16_t len,
+    /* out */ volatile unsigned int *flags,
+    /* out */ volatile unsigned int *tx __attribute__((unused))) {
+    if (len != sizeof(uint32_t) + SIA_HASH_SIZE) {
+        THROW(SW_INVALID_PARAM);
+    }
     // Read the index of the signing key. U4LE is a helper macro for
     // converting a 4-byte buffer to a uint32_t.
     ctx->keyIndex = U4LE(buffer, 0);
