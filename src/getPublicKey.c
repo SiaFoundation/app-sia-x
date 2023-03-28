@@ -28,9 +28,17 @@
 #include "sia.h"
 #include "sia_ux.h"
 
+// These are APDU parameters that control the behavior of the getPublicKey
+// command.
+#define P2_DISPLAY_ADDRESS 0x00
+#define P2_DISPLAY_PUBKEY 0x01
+
 // Get a pointer to getPublicKey's state variables.
 static getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
 
+static unsigned int io_seproxyhal_touch_pk_ok(void);
+
+#ifdef HAVE_BAGL
 // Allows scrolling through the address/public key
 UX_STEP_CB(
 	ux_compare_pk_flow_1_step,
@@ -47,7 +55,48 @@ UX_FLOW(
 	&ux_compare_pk_flow_1_step
 );
 
-unsigned int io_seproxyhal_touch_pk_ok(void) {
+UX_STEP_NOCB(
+    ux_approve_pk_flow_1_step, bn,
+     {
+        global.getPublicKeyContext.typeStr,
+        global.getPublicKeyContext.keyStr
+    }
+);
+
+UX_STEP_VALID(
+    ux_approve_pk_flow_2_step,
+    pb,
+    io_seproxyhal_touch_pk_ok(),
+    {
+        &C_icon_validate,
+        "Approve"
+    }
+);
+
+UX_STEP_VALID(
+    ux_approve_pk_flow_3_step,
+    pb,
+    io_seproxyhal_cancel(),
+    {
+        &C_icon_crossmark,
+        "Reject"
+    }
+);
+
+// Flow for the public key/address menu:
+// #1 screen: "generate address/public key from key #x?"
+// #2 screen: approve
+// #3 screen: reject
+UX_FLOW(
+    ux_approve_pk_flow,
+    &ux_approve_pk_flow_1_step,
+    &ux_approve_pk_flow_2_step,
+    &ux_approve_pk_flow_3_step
+);
+
+#endif
+
+static unsigned int io_seproxyhal_touch_pk_ok(void) {
     cx_ecfp_public_key_t publicKey = {0};
 
     // The response APDU will contain multiple objects, which means we need to
@@ -77,54 +126,12 @@ unsigned int io_seproxyhal_touch_pk_ok(void) {
         bin2hex(ctx->fullStr, G_io_apdu_buffer, 32);
     }
 
+#ifdef HAVE_BAGL
     ux_flow_init(0, ux_compare_pk_flow, NULL);
+#endif
 
     return 0;
 }
-
-UX_STEP_NOCB(
-	ux_approve_pk_flow_1_step, bn,
-     {
-		global.getPublicKeyContext.typeStr,
-		global.getPublicKeyContext.keyStr
-	}
-);
-
-UX_STEP_VALID(
-	ux_approve_pk_flow_2_step,
-	pb,
-	io_seproxyhal_touch_pk_ok(),
-	{
-		&C_icon_validate,
-		"Approve"
-	}
-);
-
-UX_STEP_VALID(
-	ux_approve_pk_flow_3_step,
-	pb,
-	io_seproxyhal_cancel(),
-	{
-		&C_icon_crossmark,
-		"Reject"
-	}
-);
-
-// Flow for the public key/address menu:
-// #1 screen: "generate address/public key from key #x?"
-// #2 screen: approve
-// #3 screen: reject
-UX_FLOW(
-	ux_approve_pk_flow,
-	&ux_approve_pk_flow_1_step,
-	&ux_approve_pk_flow_2_step,
-	&ux_approve_pk_flow_3_step
-);
-
-// These are APDU parameters that control the behavior of the getPublicKey
-// command.
-#define P2_DISPLAY_ADDRESS 0x00
-#define P2_DISPLAY_PUBKEY 0x01
 
 void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
                         /* out */ volatile unsigned int* flags,
@@ -160,7 +167,9 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
         memmove(ctx->keyStr + 5 + n, "?", 2);
     }
 
+#ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_pk_flow, NULL);
+#endif
 
     *flags |= IO_ASYNCH_REPLY;
 }
