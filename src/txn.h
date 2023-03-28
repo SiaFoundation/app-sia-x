@@ -1,8 +1,8 @@
 #pragma once
 
-#include "blake2b.h"
-
 #include <stdint.h>
+
+#include "blake2b.h"
 
 // macros for converting raw bytes to uint64_t
 #define U8BE(buf, off) (((uint64_t)(U4BE(buf, off))     << 32) | ((uint64_t)(U4BE(buf, off + 4)) & 0xFFFFFFFF))

@@ -19,11 +19,13 @@
 //
 // Keep this description in mind as you read through the implementation.
 
-#include <stdint.h>
+#include <os.h>
+#include <ux.h>
+#include <os_io_seproxyhal.h>
+#include <os_io_seproxyhal.h>
 #include <stdbool.h>
 #include <string.h>
-#include <os_io_seproxyhal.h>
-#include <ux.h>
+#include <stdint.h>
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
@@ -31,6 +33,9 @@
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
+static void fmtTxnElem(calcTxnHashContext_t *ctx);
+
+#ifdef HAVE_BAGL
 static unsigned int ui_calcTxnHash_elem_button(void);
 static unsigned int io_seproxyhal_touch_txn_hash_ok(void);
 
@@ -117,6 +122,66 @@ static unsigned int io_seproxyhal_touch_txn_hash_ok(void) {
 	return 0;
 }
 
+static unsigned int ui_calcTxnHash_elem_button(void) {
+    if (ctx->elemPart > 0) {
+        // We're in the middle of displaying a multi-part element; display
+        // the next part.
+        fmtTxnElem(ctx);
+#ifdef HAVE_BAGL
+        ux_flow_init(0, ux_show_txn_elem_flow, NULL);
+#endif
+        return 0;
+    }
+    // Attempt to decode the next element in the transaction.
+    switch (txn_next_elem(&ctx->txn)) {
+        case TXN_STATE_ERR:
+            // The transaction is invalid.
+            io_exchange_with_code(SW_INVALID_PARAM, 0);
+            ui_idle();
+            break;
+        case TXN_STATE_PARTIAL:
+            // We don't have enough data to decode the next element; send an
+            // OK code to request more.
+            io_exchange_with_code(SW_OK, 0);
+            break;
+        case TXN_STATE_READY:
+            // We successively decoded one or more elements; display the first
+            // part of the first element.
+            ctx->elemPart = 0;
+            fmtTxnElem(ctx);
+#ifdef HAVE_BAGL
+            ux_flow_init(0, ux_show_txn_elem_flow, NULL);
+#endif
+            break;
+        case TXN_STATE_FINISHED:
+            // We've finished decoding the transaction, and all elements have
+            // been displayed.
+            if (ctx->sign) {
+                // If we're signing the transaction, prepare and display the
+                // approval screen.
+                memmove(ctx->fullStr, "with key #", 10);
+                memmove(ctx->fullStr + 10 + (bin2dec(ctx->fullStr + 10, ctx->keyIndex)), "?", 2);
+#ifdef HAVE_BAGL
+                ux_flow_init(0, ux_sign_txn_flow, NULL);
+#endif
+            } else {
+                // If we're just computing the hash, send it immediately and
+                // display the comparison screen
+                memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
+                io_exchange_with_code(SW_OK, 32);
+                bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
+#ifdef HAVE_BAGL
+                ux_flow_init(0, ux_compare_hash_flow, NULL);
+#endif
+            }
+            // Reset the initialization state.
+            ctx->initialized = false;
+            break;
+    }
+    return 0;
+}
+#endif
+
 // This is a helper function that prepares an element of the transaction for
 // display. It stores the type of the element in labelStr, and a human-
 // readable representation of the element in fullStr. As in previous screens,
@@ -170,57 +235,6 @@ static void fmtTxnElem(calcTxnHashContext_t *ctx) {
 		ui_idle();
 		break;
 	}
-}
-
-static unsigned int ui_calcTxnHash_elem_button(void) {
-	if (ctx->elemPart > 0) {
-		// We're in the middle of displaying a multi-part element; display
-		// the next part.
-		fmtTxnElem(ctx);
-		ux_flow_init(0, ux_show_txn_elem_flow, NULL);
-		return 0;
-	}
-	// Attempt to decode the next element in the transaction.
-	switch (txn_next_elem(&ctx->txn)) {
-	case TXN_STATE_ERR:
-		// The transaction is invalid.
-		io_exchange_with_code(SW_INVALID_PARAM, 0);
-		ui_idle();
-		break;
-	case TXN_STATE_PARTIAL:
-		// We don't have enough data to decode the next element; send an
-		// OK code to request more.
-		io_exchange_with_code(SW_OK, 0);
-		break;
-	case TXN_STATE_READY:
-		// We successively decoded one or more elements; display the first
-		// part of the first element.
-		ctx->elemPart = 0;
-		fmtTxnElem(ctx);
-		ux_flow_init(0, ux_show_txn_elem_flow, NULL);
-		break;
-	case TXN_STATE_FINISHED:
-		// We've finished decoding the transaction, and all elements have
-		// been displayed.
-		if (ctx->sign) {
-			// If we're signing the transaction, prepare and display the
-			// approval screen.
-			memmove(ctx->fullStr, "with key #", 10);
-			memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
-			ux_flow_init(0, ux_sign_txn_flow, NULL);
-		} else {
-			// If we're just computing the hash, send it immediately and
-			// display the comparison screen
-			memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
-			io_exchange_with_code(SW_OK, 32);
-			bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-			ux_flow_init(0, ux_compare_hash_flow, NULL);
-		}
-		// Reset the initialization state.
-		ctx->initialized = false;
-		break;
-	}
-	return 0;
 }
 
 // APDU parameters
@@ -286,7 +300,9 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 	case TXN_STATE_READY:
 		ctx->elemPart = 0;
 		fmtTxnElem(ctx);
+#ifdef HAVE_BAGL
 		ux_flow_init(0, ux_show_txn_elem_flow, NULL);
+#endif
 		*flags |= IO_ASYNCH_REPLY;
 		break;
 	case TXN_STATE_FINISHED:
@@ -294,13 +310,17 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 			memmove(ctx->fullStr, "with key #", 10);
 			bin2dec(ctx->fullStr+10, ctx->keyIndex);
 			memmove(ctx->fullStr+10+(bin2dec(ctx->fullStr+10, ctx->keyIndex)), "?", 2);
+#ifdef HAVE_BAGL
 			ux_flow_init(0, ux_sign_txn_flow, NULL);
+#endif
 			*flags |= IO_ASYNCH_REPLY;
 		} else {
 			memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
 			io_exchange_with_code(SW_OK, 32);
 			bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
+#ifdef HAVE_BAGL
 			ux_flow_init(0, ux_compare_hash_flow, NULL);
+#endif
 			// The above code does something strange: it calls io_exchange
 			// directly from the command handler. You might wonder: why not
 			// just prepare the APDU buffer and let sia_main call io_exchange?

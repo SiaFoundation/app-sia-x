@@ -1,7 +1,7 @@
 #include <stdint.h>
-#include <os.h>
 #include <string.h>
-#include <cx.h>
+
+#include "blake2b.h"
 
 void blake2b_init(cx_blake2b_t *S) {
 	cx_blake2b_init(S, 256);

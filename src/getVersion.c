@@ -5,7 +5,6 @@
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
-#include <ux.h>
 
 // handleGetVersion is the entry point for the getVersion command. It
 // unconditionally sends the app version.
