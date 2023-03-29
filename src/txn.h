@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TXN_H
+#define TXN_H
 
 #include <stdint.h>
 
@@ -65,3 +66,5 @@ void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);
 // encountered, it returns TXN_STATE_ERR. If the transaction has been fully
 // decoded, it returns TXN_STATE_FINISHED.
 txnDecoderState_e txn_next_elem(txn_state_t *txn);
+
+#endif /* TXN_H */

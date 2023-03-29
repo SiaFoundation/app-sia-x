@@ -1,9 +1,12 @@
+#ifndef SIA_UX_H
+#define SIA_UX_H
+
 #include <ux.h>
+#include "txn.h"
+
 #ifdef HAVE_NBGL
 #include <nbgl_use_case.h>
 #endif
-
-#include "txn.h"
 
 // Each command has some state associated with it that sticks around for the
 // life of the command. A separate context_t struct should be defined for each
@@ -77,3 +80,5 @@ void io_exchange_with_code(uint16_t code, uint16_t tx);
 
 // standard "reject" function so we don't repeat code
 unsigned int io_seproxyhal_cancel(void);
+
+#endif /* SIA_UX_H */
