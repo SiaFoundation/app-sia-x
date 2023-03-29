@@ -199,8 +199,6 @@ void ui_menu_about(void) {
     ux_flow_init(0, ux_menu_about_flow, NULL);
 }
 #else
-const nbgl_icon_details_t app_icon;
-
 static const char *const INFO_TYPES[] = {"Version"};
 static const char *const INFO_CONTENTS[] = {APPVERSION};
 
@@ -219,7 +217,7 @@ void app_quit(void) {
 }
 
 void ui_idle(void) {
-    nbgl_useCaseHome(APPNAME, &app_icon, NULL, false, ui_menu_about, app_quit);
+    nbgl_useCaseHome(APPNAME, &C_stax_app_sia, NULL, false, ui_menu_about, app_quit);
 }
 
 void ui_menu_about(void) {

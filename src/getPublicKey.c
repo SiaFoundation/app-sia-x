@@ -79,7 +79,22 @@ UX_FLOW(
     &ux_approve_pk_flow_1_step,
     &ux_approve_pk_flow_2_step,
     &ux_approve_pk_flow_3_step);
+#else
 
+static void confirm_address_rejection(void) {
+    // display a status page and go back to main
+    io_exchange_with_code(SW_USER_REJECTED, 0);
+    nbgl_useCaseStatus("Cancelled", false, ui_idle);
+}
+
+static void review_choice(bool confirm) {
+    ui_idle();
+}
+
+static void continue_review(void) {
+    io_seproxyhal_touch_pk_ok();
+    nbgl_useCaseAddressConfirmation(ctx->fullStr, review_choice);
+}
 #endif
 
 static unsigned int io_seproxyhal_touch_pk_ok(void) {
@@ -138,6 +153,7 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
     }
 
     // Read Key Index
+    explicit_bzero(ctx, sizeof(getPublicKeyContext_t));
     ctx->keyIndex = U4LE(buffer, 0);
     ctx->genAddr = (p2 == P2_DISPLAY_ADDRESS);
 
@@ -155,6 +171,13 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
 
 #ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_pk_flow, NULL);
+#else
+    nbgl_useCaseReviewStart(&C_stax_app_sia,
+                            ctx->typeStr,
+                            ctx->keyStr,
+                            "Cancel",
+                            continue_review,
+                            confirm_address_rejection);
 #endif
 
     *flags |= IO_ASYNCH_REPLY;
