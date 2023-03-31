@@ -72,6 +72,13 @@ UX_FLOW(
     &ux_approve_hash_flow_1_step,
     &ux_approve_hash_flow_2_step,
     &ux_approve_hash_flow_3_step);
+#else
+
+static void sign_rejection(void) {
+    // display a status page and go back to main
+    io_exchange_with_code(SW_USER_REJECTED, 0);
+    nbgl_useCaseStatus("Cancelled", false, ui_idle);
+}
 #endif
 
 void handleSignHash(
@@ -95,6 +102,13 @@ void handleSignHash(
 
 #ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_hash_flow, NULL);
+#else
+    nbgl_useCaseReviewStart(&C_stax_app_sia,
+                            "Sign Hash?",
+                            ctx->hexHash,
+                            "Cancel",
+                            io_seproxyhal_touch_hash_ok,
+                            sign_rejection);
 #endif
 
     *flags |= IO_ASYNCH_REPLY;
