@@ -26,6 +26,8 @@ typedef struct {
 typedef struct {
 	uint32_t keyIndex;
 	uint8_t hash[SIA_HASH_SIZE];
+
+	char typeStr[40];
 	char hexHash[SIA_HASH_SIZE * 2];
 } signHashContext_t;
 
