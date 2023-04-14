@@ -26,16 +26,21 @@ class P2(IntEnum):
     # Parameter 2 for more APDU to receive.
     P2_MORE = 0x80
 
+    P2_DISPLAY_ADDRESS = 0x00
+    P2_DISPLAY_PUBKEY = 0x01
+
     P2_DISPLAY_HASH = 0x00
     P2_SIGN_HASH = 0x01
 
+    
 class InsType(IntEnum):
-    GET_VERSION    = 0x01
-    GET_APP_NAME   = 0x04
-    GET_PUBLIC_KEY = 0x05
-    SIGN_TX        = 0x08
+    GET_VERSION = 0x01
+    GET_PUBLIC_KEY = 0x02
+    SIGN_HASH = 0x04
+    GET_TXN_HASH = 0x08
 
 class Errors(IntEnum):
+    SW_OK = 0x9000
     SW_INVALID_PARAM = 0x681
 
 
@@ -88,21 +93,31 @@ class BoilerplateCommandSender:
                                      data=b"")
 
 
-    def get_public_key(self, path: str) -> RAPDU:
-        return self.backend.exchange(cla=CLA,
-                                     ins=InsType.GET_PUBLIC_KEY,
-                                     p1=P1.P1_START,
-                                     p2=P2.P2_LAST,
-                                     data=pack_derivation_path(path))
-
-
     @contextmanager
-    def get_public_key_with_confirmation(self, path: str) -> Generator[None, None, None]:
+    def get_address_with_confirmation(self, index: int) -> Generator[None, None, None]:
         with self.backend.exchange_async(cla=CLA,
                                          ins=InsType.GET_PUBLIC_KEY,
-                                         p1=P1.P1_CONFIRM,
-                                         p2=P2.P2_LAST,
-                                         data=pack_derivation_path(path)) as response:
+                                         p1=P1.P1_START,
+                                         p2=P2.P2_DISPLAY_ADDRESS,
+                                         data=index.to_bytes(4, "little", signed=False)) as response:
+            yield response
+
+    @contextmanager
+    def get_public_key_with_confirmation(self, index: int) -> Generator[None, None, None]:
+        with self.backend.exchange_async(cla=CLA,
+                                         ins=InsType.GET_PUBLIC_KEY,
+                                         p1=P1.P1_START,
+                                         p2=P2.P2_DISPLAY_PUBKEY,
+                                         data=index.to_bytes(4, "little", signed=False)) as response:
+            yield response
+
+    @contextmanager
+    def sign_hash_with_confirmation(self, index: int, to_sign: bytes) -> Generator[None, None, None]:
+        with self.backend.exchange_async(cla=CLA,
+                                         ins=InsType.SIGN_HASH,
+                                         p1=P1.P1_START,
+                                         p2=P2.P2_DISPLAY_PUBKEY,
+                                         data=index.to_bytes(4, "little", signed=False) + to_sign[:32]) as response:
             yield response
 
 
