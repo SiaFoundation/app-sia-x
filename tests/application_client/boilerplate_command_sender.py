@@ -1,6 +1,8 @@
+import time
 from enum import IntEnum
 from typing import Generator, List, Optional
 from contextlib import contextmanager
+from ragger.navigator import NavInsID
 
 from ragger.backend.interface import BackendInterface, RAPDU
 from ragger.bip import pack_derivation_path
@@ -13,11 +15,6 @@ CLA: int = 0xE0
 class P1(IntEnum):
     # Parameter 1 for first APDU number.
     P1_START = 0x00
-    # Parameter 1 for maximum APDU number.
-    P1_MAX   = 0x03
-    # Parameter 1 for screen confirmation for GET_PUBLIC_KEY.
-    P1_CONFIRM = 0x01
-
     P1_MORE = 0x80
 
 class P2(IntEnum):
@@ -122,28 +119,25 @@ class BoilerplateCommandSender:
 
 
     @contextmanager
-    def sign_tx(self, path: str, transaction: bytes) -> Generator[None, None, None]:
-        self.backend.exchange(cla=CLA,
-                              ins=InsType.SIGN_TX,
-                              p1=P1.P1_START,
-                              p2=P2.P2_MORE,
-                              data=pack_derivation_path(path))
-        messages = split_message(transaction, MAX_APDU_LEN)
-        idx: int = P1.P1_START + 1
+    def sign_tx(self, skip_loop, skip_end, key_index: int, sig_index: int, change_index: int, transaction: bytes) -> Generator[None, None, None]:
+        p1 = P1.P1_START
+        messages = split_message(key_index.to_bytes(4, "little", signed=False) + sig_index.to_bytes(2, "little", signed=False) + change_index.to_bytes(4, "little", signed=False) + transaction, MAX_APDU_LEN)
+        for i in range(len(messages)-1):
+            with self.backend.exchange_async(cla=CLA,
+                ins=InsType.GET_TXN_HASH,
+                p1=p1,
+                p2=P2.P2_SIGN_HASH,
+                data=messages[i]):
+                    skip_loop()
 
-        for msg in messages[:-1]:
-            self.backend.exchange(cla=CLA,
-                                  ins=InsType.SIGN_TX,
-                                  p1=idx,
-                                  p2=P2.P2_MORE,
-                                  data=msg)
-            idx += 1
+            p1 = p1.P1_MORE
 
         with self.backend.exchange_async(cla=CLA,
-                                         ins=InsType.SIGN_TX,
-                                         p1=idx,
-                                         p2=P2.P2_LAST,
+                                         ins=InsType.GET_TXN_HASH,
+                                         p1=p1,
+                                         p2=P2.P2_SIGN_HASH,
                                          data=messages[-1]) as response:
+            skip_end()
             yield response
 
     def get_async_response(self) -> Optional[RAPDU]:
