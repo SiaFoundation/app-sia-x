@@ -14,6 +14,5 @@ def test_bad_cla(backend):
 def test_bad_ins(backend):
     # Disable raising when trying to unpack an error APDU
     backend.raise_policy = RaisePolicy.RAISE_NOTHING
-    rapdu = backend.exchange(cla=CLA, ins=0xff)
+    rapdu = backend.exchange(cla=CLA, ins=0xFF)
     assert rapdu.status == Errors.SW_INS_NOT_SUPPORTED
-
