@@ -34,9 +34,7 @@
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
 static void fmtTxnElem(void);
-static void ui_calcTxnHash_elem_button_void(void);
 static unsigned int ui_calcTxnHash_elem_button(void);
-static void io_seproxyhal_touch_txn_hash_ok_void(void);
 static unsigned int io_seproxyhal_touch_txn_hash_ok(void);
 
 #ifdef HAVE_BAGL
@@ -98,6 +96,9 @@ UX_FLOW(
     ux_show_txn_elem_flow,
     &ux_show_txn_elem_1_step);
 #else
+
+static void ui_calcTxnHash_elem_button_void(void);
+static void io_seproxyhal_touch_txn_hash_ok_void(void);
 
 static void io_seproxyhal_touch_txn_hash_ok_void(void) {
     io_seproxyhal_touch_txn_hash_ok();
