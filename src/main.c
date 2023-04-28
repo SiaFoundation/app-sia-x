@@ -340,7 +340,7 @@ static void sia_main(void) {
 // without calling this, pagination will always begin on the last page if a paginated menu has been scrolled through before during the session
 #ifdef TARGET_NANOX
                 ux_layout_bnnn_paging_reset();
-#elif HAVE_BAGL
+#elif defined(HAVE_BAGL)
                 ux_layout_paging_reset();
 #endif
 
@@ -412,7 +412,7 @@ uint8_t io_event(uint8_t channel) {
                   SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
                 THROW(EXCEPTION_IO_RESET);
             }
-            /* fallthrough */
+            __attribute__((fallthrough));
         case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
 #ifdef HAVE_BAGL
             UX_DISPLAYED_EVENT({});
