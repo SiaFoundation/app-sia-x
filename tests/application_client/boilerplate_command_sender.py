@@ -1,11 +1,8 @@
-import time
 from enum import IntEnum
 from typing import Generator, List, Optional
 from contextlib import contextmanager
-from ragger.navigator import NavInsID
 
 from ragger.backend.interface import BackendInterface, RAPDU
-from ragger.bip import pack_derivation_path
 
 
 MAX_APDU_LEN: int = 255
@@ -81,11 +78,6 @@ class BoilerplateCommandSender:
             cla=CLA, ins=InsType.GET_VERSION, p1=P1.P1_START, p2=P2.P2_LAST, data=b""
         )
 
-    def get_app_name(self) -> RAPDU:
-        return self.backend.exchange(
-            cla=CLA, ins=InsType.GET_APP_NAME, p1=P1.P1_START, p2=P2.P2_LAST, data=b""
-        )
-
     @contextmanager
     def get_address_with_confirmation(self, index: int) -> Generator[None, None, None]:
         with self.backend.exchange_async(
@@ -151,7 +143,7 @@ class BoilerplateCommandSender:
             ):
                 skip_loop()
 
-            p1 = p1.P1_MORE
+            p1 = P1.P1_MORE
 
         with self.backend.exchange_async(
             cla=CLA,

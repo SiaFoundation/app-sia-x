@@ -33,7 +33,7 @@
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
-static void fmtTxnElem(calcTxnHashContext_t *ctx);
+static void fmtTxnElem(void);
 static void ui_calcTxnHash_elem_button_void(void);
 static unsigned int ui_calcTxnHash_elem_button(void);
 static void io_seproxyhal_touch_txn_hash_ok_void(void);
@@ -126,7 +126,7 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
     if (ctx->elemPart > 0) {
         // We're in the middle of displaying a multi-part element; display
         // the next part.
-        fmtTxnElem(ctx);
+        fmtTxnElem();
 #ifdef HAVE_BAGL
         ux_flow_init(0, ux_show_txn_elem_flow, NULL);
 #else
@@ -155,7 +155,7 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
             // We successively decoded one or more elements; display the first
             // part of the first element.
             ctx->elemPart = 0;
-            fmtTxnElem(ctx);
+            fmtTxnElem();
 #ifdef HAVE_BAGL
             ux_flow_init(0, ux_show_txn_elem_flow, NULL);
 #else
@@ -213,7 +213,7 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
 // display. It stores the type of the element in labelStr, and a human-
 // readable representation of the element in fullStr. As in previous screens,
 // partialStr holds the visible portion of fullStr.
-static void fmtTxnElem(calcTxnHashContext_t *ctx) {
+static void fmtTxnElem() {
     txn_state_t *txn = &ctx->txn;
 
     switch (txn->elemType) {
@@ -329,7 +329,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
             THROW(SW_OK);
         case TXN_STATE_READY:
             ctx->elemPart = 0;
-            fmtTxnElem(ctx);
+            fmtTxnElem();
 #ifdef HAVE_BAGL
             ux_flow_init(0, ux_show_txn_elem_flow, NULL);
 #else
