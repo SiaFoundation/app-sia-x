@@ -297,7 +297,6 @@ static handler_fn_t *lookupHandler(uint8_t ins) {
 // and sent in the next io_exchange call.
 static void sia_main(void) {
     // Mark the transaction context as uninitialized.
-    explicit_bzero(&global, sizeof(global));
     global.calcTxnHashContext.initialized = false;
 
     volatile unsigned int rx = 0;
@@ -398,7 +397,7 @@ void io_seproxyhal_display(const bagl_element_t *element) {
 #endif
 
 uint8_t io_event(uint8_t channel) {
-    (void)channel;
+    UNUSED(channel);
 
     switch (G_io_seproxyhal_spi_buffer[0]) {
         case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
