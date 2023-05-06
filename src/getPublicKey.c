@@ -28,26 +28,77 @@
 #include "sia.h"
 #include "sia_ux.h"
 
-// Get a pointer to getPublicKey's state variables.
-static getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
+// These are APDU parameters that control the behavior of the getPublicKey
+// command.
+#define P2_DISPLAY_ADDRESS 0x00
+#define P2_DISPLAY_PUBKEY 0x01
 
+// Get a pointer to getPublicKey's state variables.
+static getPublicKeyContext_t* ctx = &global.getPublicKeyContext;
+
+static unsigned int io_seproxyhal_touch_pk_ok(void);
+
+#ifdef HAVE_BAGL
 // Allows scrolling through the address/public key
 UX_STEP_CB(
-	ux_compare_pk_flow_1_step,
-	bnnn_paging,
-	ui_idle(),
-	{
-		"Compare",
-		global.getPublicKeyContext.fullStr
-	}
-);
+    ux_compare_pk_flow_1_step,
+    bnnn_paging,
+    ui_idle(),
+    {"Compare",
+     global.getPublicKeyContext.fullStr});
 
 UX_FLOW(
-	ux_compare_pk_flow,
-	&ux_compare_pk_flow_1_step
-);
+    ux_compare_pk_flow,
+    &ux_compare_pk_flow_1_step);
 
-unsigned int io_seproxyhal_touch_pk_ok(void) {
+UX_STEP_NOCB(
+    ux_approve_pk_flow_1_step, bn,
+    {global.getPublicKeyContext.typeStr,
+     global.getPublicKeyContext.keyStr});
+
+UX_STEP_VALID(
+    ux_approve_pk_flow_2_step,
+    pb,
+    io_seproxyhal_touch_pk_ok(),
+    {&C_icon_validate,
+     "Approve"});
+
+UX_STEP_VALID(
+    ux_approve_pk_flow_3_step,
+    pb,
+    io_seproxyhal_cancel(),
+    {&C_icon_crossmark,
+     "Reject"});
+
+// Flow for the public key/address menu:
+// #1 screen: "generate address/public key from key #x?"
+// #2 screen: approve
+// #3 screen: reject
+UX_FLOW(
+    ux_approve_pk_flow,
+    &ux_approve_pk_flow_1_step,
+    &ux_approve_pk_flow_2_step,
+    &ux_approve_pk_flow_3_step);
+#else
+
+static void confirm_address_rejection(void) {
+    // display a status page and go back to main
+    io_exchange_with_code(SW_USER_REJECTED, 0);
+    nbgl_useCaseStatus("Cancelled", false, ui_idle);
+}
+
+static void review_choice(bool confirm __attribute__((unused))) {
+    UNUSED(confirm);
+    ui_idle();
+}
+
+static void continue_review(void) {
+    io_seproxyhal_touch_pk_ok();
+    nbgl_useCaseAddressConfirmation(ctx->fullStr, review_choice);
+}
+#endif
+
+static unsigned int io_seproxyhal_touch_pk_ok(void) {
     cx_ecfp_public_key_t publicKey = {0};
 
     // The response APDU will contain multiple objects, which means we need to
@@ -58,7 +109,7 @@ unsigned int io_seproxyhal_touch_pk_ok(void) {
     deriveSiaKeypair(ctx->keyIndex, NULL, &publicKey);
     extractPubkeyBytes(G_io_apdu_buffer + tx, &publicKey);
     tx += 32;
-    pubkeyToSiaAddress((char *) G_io_apdu_buffer + tx, &publicKey);
+    pubkeyToSiaAddress((char*)G_io_apdu_buffer + tx, &publicKey);
     tx += 76;
 
     // Flush the APDU buffer, sending the response.
@@ -77,54 +128,12 @@ unsigned int io_seproxyhal_touch_pk_ok(void) {
         bin2hex(ctx->fullStr, G_io_apdu_buffer, 32);
     }
 
+#ifdef HAVE_BAGL
     ux_flow_init(0, ux_compare_pk_flow, NULL);
+#endif
 
     return 0;
 }
-
-UX_STEP_NOCB(
-	ux_approve_pk_flow_1_step, bn,
-     {
-		global.getPublicKeyContext.typeStr,
-		global.getPublicKeyContext.keyStr
-	}
-);
-
-UX_STEP_VALID(
-	ux_approve_pk_flow_2_step,
-	pb,
-	io_seproxyhal_touch_pk_ok(),
-	{
-		&C_icon_validate,
-		"Approve"
-	}
-);
-
-UX_STEP_VALID(
-	ux_approve_pk_flow_3_step,
-	pb,
-	io_seproxyhal_cancel(),
-	{
-		&C_icon_crossmark,
-		"Reject"
-	}
-);
-
-// Flow for the public key/address menu:
-// #1 screen: "generate address/public key from key #x?"
-// #2 screen: approve
-// #3 screen: reject
-UX_FLOW(
-	ux_approve_pk_flow,
-	&ux_approve_pk_flow_1_step,
-	&ux_approve_pk_flow_2_step,
-	&ux_approve_pk_flow_3_step
-);
-
-// These are APDU parameters that control the behavior of the getPublicKey
-// command.
-#define P2_DISPLAY_ADDRESS 0x00
-#define P2_DISPLAY_PUBKEY 0x01
 
 void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
                         /* out */ volatile unsigned int* flags,
@@ -145,6 +154,7 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
     }
 
     // Read Key Index
+    explicit_bzero(ctx, sizeof(getPublicKeyContext_t));
     ctx->keyIndex = U4LE(buffer, 0);
     ctx->genAddr = (p2 == P2_DISPLAY_ADDRESS);
 
@@ -160,7 +170,16 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
         memmove(ctx->keyStr + 5 + n, "?", 2);
     }
 
+#ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_pk_flow, NULL);
+#else
+    nbgl_useCaseReviewStart(&C_stax_app_sia,
+                            ctx->typeStr,
+                            ctx->keyStr,
+                            "Cancel",
+                            continue_review,
+                            confirm_address_rejection);
+#endif
 
     *flags |= IO_ASYNCH_REPLY;
 }

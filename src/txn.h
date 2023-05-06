@@ -1,8 +1,9 @@
-#pragma once
-
-#include "blake2b.h"
+#ifndef TXN_H
+#define TXN_H
 
 #include <stdint.h>
+
+#include "blake2b.h"
 
 // macros for converting raw bytes to uint64_t
 #define U8BE(buf, off) (((uint64_t)(U4BE(buf, off))     << 32) | ((uint64_t)(U4BE(buf, off + 4)) & 0xFFFFFFFF))
@@ -65,3 +66,5 @@ void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);
 // encountered, it returns TXN_STATE_ERR. If the transaction has been fully
 // decoded, it returns TXN_STATE_FINISHED.
 txnDecoderState_e txn_next_elem(txn_state_t *txn);
+
+#endif /* TXN_H */
