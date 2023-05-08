@@ -27,7 +27,7 @@ to generate addresses and sign transactions using the app.
 
 The attack surface for using the Sia wallet app on a Ledger Nano S/X comprises
 the Sia app itself, the system firmware running on the Nano S/X, the computer
-that the Nano S/X is connected to, and possession/control of the device. For our
+that the Nano S/X is connected to, and posession/control of the device. For our
 purposes, the app only needs to ensure its own correctness and protect the
 user from the computer that the Nano S/X is connected to. Other attack surfaces
 are beyond our control; we assume that the user physically controls the
@@ -36,7 +36,7 @@ proper security protocols. The goal of the Sia app is to achieve perfect
 security given these assumptions.
 
 The main attack vector that we are concerned with, then, is a computer running
-malicious software. This software may imitate programs like `sialedger` in such
+malicious sofware. This software may imitate programs like `sialedger` in such
 a way that the user cannot tell the difference, but secretly act maliciously.
 Specifically, the computer can do the following:
 

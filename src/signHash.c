@@ -17,14 +17,13 @@
 //
 // Keep this description in mind as you read through the implementation.
 
-#include <os_io_seproxyhal.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <string.h>
-
+#include <os_io_seproxyhal.h>
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 // Get a pointer to signHash's state variables. This is purely for
 // convenience, so that we can refer to these variables concisely from any
@@ -42,82 +41,67 @@ static unsigned int io_seproxyhal_touch_hash_ok(void) {
     return 0;
 }
 
-#ifdef HAVE_BAGL
 UX_STEP_NOCB(
-    ux_approve_hash_flow_1_step,
-    bnnn_paging,
-    {"Compare Input:",
-     global.signHashContext.hexHash});
+	ux_approve_hash_flow_1_step,
+	bnnn_paging,
+	{
+		"Compare Input:",
+		global.signHashContext.hexHash
+	}
+);
 
 UX_STEP_VALID(
-    ux_approve_hash_flow_2_step,
-    pb,
-    io_seproxyhal_touch_hash_ok(),
-    {&C_icon_validate,
-     "Approve"});
+	ux_approve_hash_flow_2_step,
+	pb,
+	io_seproxyhal_touch_hash_ok(),
+	{
+		&C_icon_validate,
+		"Approve"
+	}
+);
 
 UX_STEP_VALID(
-    ux_approve_hash_flow_3_step,
-    pb,
-    io_seproxyhal_cancel(),
-    {&C_icon_crossmark,
-     "Reject"});
+	ux_approve_hash_flow_3_step,
+	pb,
+	io_seproxyhal_cancel(),
+	{
+		&C_icon_crossmark,
+		"Reject"
+	}
+);
 
 // Flow for the signing hash menu:
 // #1 screen: the hash repeated for confirmation
 // #2 screen: approve
 // #3 screen: reject
 UX_FLOW(
-    ux_approve_hash_flow,
-    &ux_approve_hash_flow_1_step,
-    &ux_approve_hash_flow_2_step,
-    &ux_approve_hash_flow_3_step);
-#else
-
-static void io_seproxyhal_touch_hash_ok_void(void) {
-    io_seproxyhal_touch_hash_ok();
-}
-
-static void sign_rejection(void) {
-    // display a status page and go back to main
-    io_exchange_with_code(SW_USER_REJECTED, 0);
-    nbgl_useCaseStatus("Cancelled", false, ui_idle);
-}
-#endif
+	ux_approve_hash_flow,
+	&ux_approve_hash_flow_1_step,
+	&ux_approve_hash_flow_2_step,
+	&ux_approve_hash_flow_3_step
+);
 
 void handleSignHash(
-    uint8_t p1 __attribute__((unused)),
-    uint8_t p2 __attribute__((unused)),
-    uint8_t *buffer,
-    uint16_t len,
-    /* out */ volatile unsigned int *flags,
-    /* out */ volatile unsigned int *tx __attribute__((unused))) {
-    if (len != sizeof(uint32_t) + SIA_HASH_SIZE) {
-        THROW(SW_INVALID_PARAM);
-    }
+	uint8_t p1 __attribute__((unused)),
+	uint8_t p2 __attribute__((unused)),
+	uint8_t *buffer,
+	uint16_t len,
+	/* out */ volatile unsigned int *flags,
+	/* out */ volatile unsigned int *tx __attribute__((unused))) {
 
+	if (len != sizeof(uint32_t) + SIA_HASH_SIZE) {
+		THROW(SW_INVALID_PARAM);
+	}
     // Read the index of the signing key. U4LE is a helper macro for
     // converting a 4-byte buffer to a uint32_t.
-    explicit_bzero(ctx, sizeof(signHashContext_t));
     ctx->keyIndex = U4LE(buffer, 0);
-
     // Read the hash.
     memcpy(ctx->hash, buffer + sizeof(uint32_t), SIA_HASH_SIZE);
 
     // Prepare to display the comparison screen by converting the hash to hex
     bin2hex(ctx->hexHash, ctx->hash, SIA_HASH_SIZE);
 
-#ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_hash_flow, NULL);
-#else
-    snprintf(ctx->typeStr, sizeof(ctx->typeStr), "Sign hash with key %d?", ctx->keyIndex);
-    nbgl_useCaseReviewStart(&C_stax_app_sia,
-                            ctx->typeStr,
-                            ctx->hexHash,
-                            "Cancel",
-                            io_seproxyhal_touch_hash_ok_void,
-                            sign_rejection);
-#endif
 
     *flags |= IO_ASYNCH_REPLY;
 }

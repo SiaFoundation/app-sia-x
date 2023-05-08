@@ -1,7 +1,5 @@
-#ifndef SIA_H
-#define SIA_H
+#pragma once
 
-#include <os.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -38,5 +36,3 @@ void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp
 // Ledger seed, and uses it to produce a 64-byte signature of the provided
 // 32-byte hash. The key is cleared from memory after signing.
 void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash);
-
-#endif /* SIA_H */
