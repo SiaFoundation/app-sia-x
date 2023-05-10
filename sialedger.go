@@ -318,15 +318,18 @@ func OpenNanoHID() (*Nano, error) {
 		ledgerVendorID       = 0x2c97
 		ledgerNanoSProductID = 0x0001
 		ledgerNanoXProductID = 0x0004
+		ledgerStaxProductID = 0x0006
 	)
 
 	// search for Nano S
 	nanoSDevices := hid.Enumerate(ledgerVendorID, ledgerNanoSProductID)
 	// search for Nano X
 	nanoXDevices := hid.Enumerate(ledgerVendorID, ledgerNanoXProductID)
-	if len(nanoSDevices) == 0 && len(nanoXDevices) == 0 {
-		return nil, errors.New("Nano not detected")
-	} else if len(nanoSDevices) > 1 || len(nanoXDevices) > 1 {
+	// search for Stax
+	staxDevices := hid.Enumerate(ledgerVendorID, ledgerStaxProductID)
+	if len(nanoSDevices) == 0 && len(nanoXDevices) == 0 && len(staxDevices) == 0 {
+		return nil, errors.New("Device not detected")
+	} else if len(nanoSDevices) > 1 || len(nanoXDevices) > 1 || len(staxDevices) > 1 {
 		return nil, errors.New("Unexpected error -- Is the Sia wallet app running?")
 	}
 
@@ -336,7 +339,10 @@ func OpenNanoHID() (*Nano, error) {
 		device, err = nanoSDevices[0].Open()
 	} else if len(nanoXDevices) > 0 {
 		device, err = nanoXDevices[0].Open()
+	} else if len(staxDevices) > 0 {
+		device, err = staxDevices[0].Open()
 	}
+
 	if err != nil {
 		return nil, err
 	}
