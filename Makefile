@@ -26,7 +26,7 @@ include $(BOLOS_SDK)/Makefile.defines
 
 APPNAME    = Sia
 APPVERSION = 0.4.4
-ifeq ($(TARGET_NAME),TARGET_NANOS)
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOS TARGET_NANOS2))
 ICONNAME=nanos_app_sia.gif
 else ifeq ($(TARGET_NAME),TARGET_NANOX)
 ICONNAME=nanox_app_sia.gif
@@ -36,10 +36,10 @@ endif
 
 # The --path argument here restricts which BIP32 paths the app is allowed to derive.
 APP_LOAD_PARAMS = --path "44'/93'" --curve ed25519 $(COMMON_LOAD_PARAMS)
-ifeq ($(TARGET_NAME),TARGET_NANOS)
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOS TARGET_NANOS2))
 APP_LOAD_PARAMS += --appFlags 0x40
 else ifeq ($(TARGET_NAME),TARGET_NANOX)
-APP_LOAD_PARAMS += --appFlags 0x40
+APP_LOAD_PARAMS += --appFlags 0x240
 else ifeq ($(TARGET_NAME), TARGET_STAX)
 APP_LOAD_PARAMS += --appFlags 0x240
 endif
@@ -70,13 +70,13 @@ DEFINES += APPNAME=\"$(APPNAME)\"
 DEFINES += APPVERSION=\"$(APPVERSION)\"
 DEFINES += UNUSED\(x\)=\(void\)x
 
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_NANOS))
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_NANOS TARGET_NANOS2))
 DEFINES += HAVE_BAGL
 DEFINES += HAVE_UX_FLOW
 endif
 
 ### Nano X
-ifeq ($(TARGET_NAME),TARGET_NANOS)
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOS TARGET_NANOS2))
 DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=128
 else ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX))
 DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
