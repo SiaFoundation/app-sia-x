@@ -492,7 +492,7 @@ __attribute__((section(".boot"))) int main(void) {
                 USB_power(0);
                 USB_power(1);
 
-#if defined(TARGET_NANOX) || defined(TARGET_STAX)
+#ifdef HAVE_BLE
                 BLE_power(0, NULL);
                 BLE_power(1, NULL);
 #endif
