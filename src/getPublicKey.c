@@ -87,9 +87,12 @@ static void confirm_address_rejection(void) {
     nbgl_useCaseStatus("Cancelled", false, ui_idle);
 }
 
-static void review_choice(bool confirm __attribute__((unused))) {
-    UNUSED(confirm);
-    ui_idle();
+static void review_choice(bool confirm) {
+    if (confirm) {
+        nbgl_useCaseStatus("Confirmed", true, ui_idle);
+    } else {
+        nbgl_useCaseStatus("Cancelled", false, ui_idle);
+    }
 }
 
 static void continue_review(void) {

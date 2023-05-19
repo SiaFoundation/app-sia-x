@@ -217,8 +217,8 @@ static void __txn_next_elem(txn_state_t *txn) {
     switch (txn->elemType) {
         // these elements should be displayed
         case TXN_ELEM_SC_OUTPUT:
-            readCurrency(txn, txn->outVal);  // Value
-            readHash(txn, (char*)txn->outAddr);     // UnlockHash
+            readCurrency(txn, txn->outVal);       // Value
+            readHash(txn, (char *)txn->outAddr);  // UnlockHash
             advance(txn);
             txn->sliceIndex++;
             if (!memcmp(txn->outAddr, txn->changeAddr, sizeof(txn->outAddr))) {
@@ -229,9 +229,9 @@ static void __txn_next_elem(txn_state_t *txn) {
             THROW(TXN_STATE_READY);
 
         case TXN_ELEM_SF_OUTPUT:
-            readCurrency(txn, txn->outVal);  // Value
-            readHash(txn, (char*)txn->outAddr);     // UnlockHash
-            readCurrency(txn, NULL);         // ClaimStart
+            readCurrency(txn, txn->outVal);       // Value
+            readHash(txn, (char *)txn->outAddr);  // UnlockHash
+            readCurrency(txn, NULL);              // ClaimStart
             advance(txn);
             txn->sliceIndex++;
             txn->displayIndex++;
@@ -323,7 +323,7 @@ void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
 
     cx_ecfp_public_key_t publicKey = {0};
     deriveSiaKeypair(changeIndex, NULL, &publicKey);
-    pubkeyToSiaAddress((char*)&txn->changeAddr, &publicKey);
+    pubkeyToSiaAddress((char *)&txn->changeAddr, &publicKey);
 
     // initialize hash state
     blake2b_init(&txn->blake);
