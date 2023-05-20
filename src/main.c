@@ -167,10 +167,15 @@ UX_FLOW(
     FLOW_LOOP);
 
 UX_STEP_NOCB(
-    ux_menu_info_step,
+    ux_menu_version_step,
     bn,
     {"Version",
      APPVERSION});
+UX_STEP_NOCB(
+    ux_menu_developer_step,
+    bn,
+    {"Developer",
+     APPDEVELOPER});
 UX_STEP_CB(
     ux_menu_back_step,
     pb,
@@ -183,7 +188,8 @@ UX_STEP_CB(
 // #2 screen: back button
 UX_FLOW(
     ux_menu_about_flow,
-    &ux_menu_info_step,
+    &ux_menu_version_step,
+    &ux_menu_developer_step,
     &ux_menu_back_step,
     FLOW_LOOP);
 
@@ -199,13 +205,13 @@ void ui_menu_about(void) {
     ux_flow_init(0, ux_menu_about_flow, NULL);
 }
 #else
-static const char *const INFO_TYPES[] = {"Version"};
-static const char *const INFO_CONTENTS[] = {APPVERSION};
+static const char *const INFO_TYPES[] = {"Version", "Developer"};
+static const char *const INFO_CONTENTS[] = {APPVERSION, APPDEVELOPER};
 
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     UNUSED(page);
     content->type = INFOS_LIST;
-    content->infosList.nbInfos = 1;
+    content->infosList.nbInfos = 2;
     content->infosList.infoTypes = (const char **)INFO_TYPES;
     content->infosList.infoContents = (const char **)INFO_CONTENTS;
     return true;
@@ -297,6 +303,7 @@ static handler_fn_t *lookupHandler(uint8_t ins) {
 // and sent in the next io_exchange call.
 static void sia_main(void) {
     // Mark the transaction context as uninitialized.
+    explicit_bzero(&global, sizeof(global));
     global.calcTxnHashContext.initialized = false;
 
     volatile unsigned int rx = 0;
