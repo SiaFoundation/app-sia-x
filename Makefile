@@ -26,8 +26,10 @@ include $(BOLOS_SDK)/Makefile.defines
 
 APPNAME    = Sia
 APPVERSION = 0.4.4
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOS TARGET_NANOS2))
+ifeq ($(TARGET_NAME),TARGET_NANOS)
 ICONNAME=nanos_app_sia.gif
+else ifeq ($(TARGET_NAME),TARGET_NANOS2)
+ICONNAME=nanos2_app_sia.gif
 else ifeq ($(TARGET_NAME),TARGET_NANOX)
 ICONNAME=nanox_app_sia.gif
 else ifeq ($(TARGET_NAME),TARGET_STAX)
