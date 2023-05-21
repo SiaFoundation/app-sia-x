@@ -39,7 +39,7 @@ APP_LOAD_PARAMS = --path "44'/93'" --curve ed25519 $(COMMON_LOAD_PARAMS)
 ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOS TARGET_NANOS2))
 APP_LOAD_PARAMS += --appFlags 0x40
 else ifeq ($(TARGET_NAME),TARGET_NANOX)
-APP_LOAD_PARAMS += --appFlags 0x240
+APP_LOAD_PARAMS += --appFlags 0x40
 else ifeq ($(TARGET_NAME), TARGET_STAX)
 APP_LOAD_PARAMS += --appFlags 0x240
 endif
