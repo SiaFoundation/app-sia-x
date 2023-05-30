@@ -110,16 +110,29 @@ static void ui_calcTxnHash_elem_button_void(void) {
 
 static void sign_rejection(void) {
     explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
+    nbgl_useCaseStatus("Signing Cancelled", false, ui_idle);
     // display a status page and go back to main
     io_exchange_with_code(SW_USER_REJECTED, 0);
-    nbgl_useCaseStatus("Cancelled", false, ui_idle);
 }
+
+static void hash_review_choice(bool confirm) {
+    if (confirm) {
+        nbgl_useCaseStatus("HASH CONFIRMED", true, ui_idle);
+    } else {
+        nbgl_useCaseStatus("Hash Verification Cancelled", false, ui_idle);
+    }
+}
+
 #endif
 
 static unsigned int io_seproxyhal_touch_txn_hash_ok(void) {
     deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
     io_exchange_with_code(SW_OK, 64);
+#ifdef HAVE_BAGL
     ui_idle();
+#else
+    nbgl_useCaseStatus("TXN SIGNED", true, ui_idle);
+#endif
     return 0;
 }
 
@@ -195,12 +208,7 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
 #ifdef HAVE_BAGL
                 ux_flow_init(0, ux_compare_hash_flow, NULL);
 #else
-                nbgl_useCaseReviewStart(&C_stax_app_sia,
-                                        "Confirm hash",
-                                        ctx->fullStr,
-                                        "Cancel",
-                                        ui_idle,
-                                        ui_idle);
+                nbgl_useCaseChoice(NULL, ctx->fullStr, "Hash", "Confirm", "Cancel", hash_review_choice);
 #endif
             }
             // Reset the initialization state.
@@ -350,7 +358,15 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
                 memmove(ctx->fullStr + 10 + (bin2dec(ctx->fullStr + 10, ctx->keyIndex)), "?", 2);
 #ifdef HAVE_BAGL
                 ux_flow_init(0, ux_sign_txn_flow, NULL);
+#else
+                nbgl_useCaseReviewStart(&C_stax_app_sia,
+                                        "Sign Transaction",
+                                        ctx->fullStr,
+                                        "Cancel",
+                                        io_seproxyhal_touch_txn_hash_ok_void,
+                                        sign_rejection);
 #endif
+
                 *flags |= IO_ASYNCH_REPLY;
             } else {
                 memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
@@ -359,12 +375,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 #ifdef HAVE_BAGL
                 ux_flow_init(0, ux_compare_hash_flow, NULL);
 #else
-                nbgl_useCaseReviewStart(&C_stax_app_sia,
-                                        "Confirm",
-                                        ctx->fullStr,
-                                        "Cancel",
-                                        ui_idle,
-                                        ui_idle);
+                nbgl_useCaseChoice(NULL, ctx->fullStr, "Hash", "Confirm", "Cancel", hash_review_choice);
 #endif
                 // The above code does something strange: it calls io_exchange
                 // directly from the command handler. You might wonder: why not
