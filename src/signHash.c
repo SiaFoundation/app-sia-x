@@ -38,7 +38,12 @@ static unsigned int io_seproxyhal_touch_hash_ok(void) {
     deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->hash);
     io_exchange_with_code(SW_OK, 64);
 
+#ifdef HAVE_BAGL
     ui_idle();
+#else
+    nbgl_useCaseStatus("HASH SIGNED", true, ui_idle);
+#endif
+
     return 0;
 }
 
@@ -81,7 +86,7 @@ static void io_seproxyhal_touch_hash_ok_void(void) {
 static void sign_rejection(void) {
     // display a status page and go back to main
     io_exchange_with_code(SW_USER_REJECTED, 0);
-    nbgl_useCaseStatus("Cancelled", false, ui_idle);
+    nbgl_useCaseStatus("Signing Cancelled", false, ui_idle);
 }
 #endif
 
@@ -110,7 +115,7 @@ void handleSignHash(
 #ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_hash_flow, NULL);
 #else
-    snprintf(ctx->typeStr, sizeof(ctx->typeStr), "Sign hash with key %d?", ctx->keyIndex);
+    snprintf(ctx->typeStr, sizeof(ctx->typeStr), "Sign Hash with Key %d?", ctx->keyIndex);
     nbgl_useCaseReviewStart(&C_stax_app_sia,
                             ctx->typeStr,
                             ctx->hexHash,

@@ -81,17 +81,29 @@ UX_FLOW(
     &ux_approve_pk_flow_3_step);
 #else
 
+static void cancel_status(void) {
+    if (ctx->genAddr) {
+        nbgl_useCaseStatus("Address Verification Cancelled", false, ui_idle);
+    } else {
+        nbgl_useCaseStatus("Pubkey Verification Cancelled", false, ui_idle);
+    }
+}
+
 static void confirm_address_rejection(void) {
     // display a status page and go back to main
     io_exchange_with_code(SW_USER_REJECTED, 0);
-    nbgl_useCaseStatus("Cancelled", false, ui_idle);
+    cancel_status();
 }
 
 static void review_choice(bool confirm) {
     if (confirm) {
-        nbgl_useCaseStatus("Confirmed", true, ui_idle);
+        if (ctx->genAddr) {
+            nbgl_useCaseStatus("ADDRESS VERIFIED", true, ui_idle);
+        } else {
+            nbgl_useCaseStatus("PUBKEY VERIFIED", true, ui_idle);
+        }
     } else {
-        nbgl_useCaseStatus("Cancelled", false, ui_idle);
+        cancel_status();
     }
 }
 
