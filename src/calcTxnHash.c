@@ -1,3 +1,4 @@
+#ifdef HAVE_BAGL
 // This file contains the implementation of the calcTxnHash command. It is
 // significantly more complicated than the other commands, mostly due to the
 // transaction parsing.
@@ -37,7 +38,6 @@ static void fmtTxnElem(void);
 static unsigned int ui_calcTxnHash_elem_button(void);
 static unsigned int io_seproxyhal_touch_txn_hash_ok(void);
 
-#ifdef HAVE_BAGL
 UX_STEP_CB(
     ux_compare_hash_flow_1_step,
     bnnn_paging,
@@ -95,44 +95,10 @@ UX_STEP_CB(
 UX_FLOW(
     ux_show_txn_elem_flow,
     &ux_show_txn_elem_1_step);
-#else
-
-static void ui_calcTxnHash_elem_button_void(void);
-static void io_seproxyhal_touch_txn_hash_ok_void(void);
-
-static void io_seproxyhal_touch_txn_hash_ok_void(void) {
-    io_seproxyhal_touch_txn_hash_ok();
-}
-
-static void ui_calcTxnHash_elem_button_void(void) {
-    ui_calcTxnHash_elem_button();
-}
-
-static void sign_rejection(void) {
-    explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
-    nbgl_useCaseStatus("Signing Cancelled", false, ui_idle);
-    // display a status page and go back to main
-    io_exchange_with_code(SW_USER_REJECTED, 0);
-}
-
-static void hash_review_choice(bool confirm) {
-    if (confirm) {
-        nbgl_useCaseStatus("HASH CONFIRMED", true, ui_idle);
-    } else {
-        nbgl_useCaseStatus("Hash Verification Cancelled", false, ui_idle);
-    }
-}
-
-#endif
-
 static unsigned int io_seproxyhal_touch_txn_hash_ok(void) {
     deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
     io_exchange_with_code(SW_OK, 64);
-#ifdef HAVE_BAGL
     ui_idle();
-#else
-    nbgl_useCaseStatus("TXN SIGNED", true, ui_idle);
-#endif
     return 0;
 }
 
@@ -141,16 +107,7 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
         // We're in the middle of displaying a multi-part element; display
         // the next part.
         fmtTxnElem();
-#ifdef HAVE_BAGL
         ux_flow_init(0, ux_show_txn_elem_flow, NULL);
-#else
-        nbgl_useCaseReviewStart(&C_stax_app_sia,
-                                ctx->labelStr,
-                                ctx->fullStr,
-                                "Cancel",
-                                ui_calcTxnHash_elem_button_void,
-                                sign_rejection);
-#endif
         return 0;
     }
     // Attempt to decode the next element in the transaction.
@@ -170,16 +127,7 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
             // part of the first element.
             ctx->elemPart = 0;
             fmtTxnElem();
-#ifdef HAVE_BAGL
             ux_flow_init(0, ux_show_txn_elem_flow, NULL);
-#else
-            nbgl_useCaseReviewStart(&C_stax_app_sia,
-                                    ctx->labelStr,
-                                    ctx->fullStr,
-                                    "Cancel",
-                                    ui_calcTxnHash_elem_button_void,
-                                    sign_rejection);
-#endif
             break;
         case TXN_STATE_FINISHED:
             // We've finished decoding the transaction, and all elements have
@@ -189,30 +137,17 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
                 // approval screen.
                 memmove(ctx->fullStr, "with key #", 10);
                 memmove(ctx->fullStr + 10 + (bin2dec(ctx->fullStr + 10, ctx->keyIndex)), "?", 2);
-#ifdef HAVE_BAGL
                 ux_flow_init(0, ux_sign_txn_flow, NULL);
-#else
-                nbgl_useCaseReviewStart(&C_stax_app_sia,
-                                        "Sign transaction",
-                                        ctx->fullStr,
-                                        "Cancel",
-                                        io_seproxyhal_touch_txn_hash_ok_void,
-                                        sign_rejection);
-#endif
             } else {
                 // If we're just computing the hash, send it immediately and
                 // display the comparison screen
                 memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
                 io_exchange_with_code(SW_OK, 32);
                 bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-#ifdef HAVE_BAGL
                 ux_flow_init(0, ux_compare_hash_flow, NULL);
-#else
-                nbgl_useCaseChoice(NULL, ctx->fullStr, "Hash", "Confirm", "Cancel", hash_review_choice);
-#endif
             }
             // Reset the initialization state.
-            explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
+            ctx->initialized = false;
             break;
     }
     return 0;
@@ -273,12 +208,6 @@ static void fmtTxnElem() {
     }
 }
 
-// APDU parameters
-#define P1_FIRST 0x00         // 1st packet of multi-packet transfer
-#define P1_MORE 0x80          // nth packet of multi-packet transfer
-#define P2_DISPLAY_HASH 0x00  // display transaction hash
-#define P2_SIGN_HASH 0x01     // sign transaction hash
-
 // handleCalcTxnHash reads a signature index and a transaction, calculates the
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
@@ -334,21 +263,14 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
     switch (txn_next_elem(&ctx->txn)) {
         case TXN_STATE_ERR:
             THROW(SW_INVALID_PARAM);
+            break;
         case TXN_STATE_PARTIAL:
             THROW(SW_OK);
+            break;
         case TXN_STATE_READY:
             ctx->elemPart = 0;
             fmtTxnElem();
-#ifdef HAVE_BAGL
             ux_flow_init(0, ux_show_txn_elem_flow, NULL);
-#else
-            nbgl_useCaseReviewStart(&C_stax_app_sia,
-                                    ctx->labelStr,
-                                    ctx->fullStr,
-                                    "Cancel",
-                                    ui_calcTxnHash_elem_button_void,
-                                    sign_rejection);
-#endif
             *flags |= IO_ASYNCH_REPLY;
             break;
         case TXN_STATE_FINISHED:
@@ -356,27 +278,14 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
                 memmove(ctx->fullStr, "with key #", 10);
                 bin2dec(ctx->fullStr + 10, ctx->keyIndex);
                 memmove(ctx->fullStr + 10 + (bin2dec(ctx->fullStr + 10, ctx->keyIndex)), "?", 2);
-#ifdef HAVE_BAGL
                 ux_flow_init(0, ux_sign_txn_flow, NULL);
-#else
-                nbgl_useCaseReviewStart(&C_stax_app_sia,
-                                        "Sign Transaction",
-                                        ctx->fullStr,
-                                        "Cancel",
-                                        io_seproxyhal_touch_txn_hash_ok_void,
-                                        sign_rejection);
-#endif
 
                 *flags |= IO_ASYNCH_REPLY;
             } else {
                 memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
                 io_exchange_with_code(SW_OK, 32);
                 bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-#ifdef HAVE_BAGL
                 ux_flow_init(0, ux_compare_hash_flow, NULL);
-#else
-                nbgl_useCaseChoice(NULL, ctx->fullStr, "Hash", "Confirm", "Cancel", hash_review_choice);
-#endif
                 // The above code does something strange: it calls io_exchange
                 // directly from the command handler. You might wonder: why not
                 // just prepare the APDU buffer and let sia_main call io_exchange?
@@ -458,7 +367,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
                 // a single Status.
             }
             // Reset the initialization state.
-            explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
+            ctx->initialized = false;
             break;
     }
 }
@@ -470,3 +379,4 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
 // handler buffers transaction data and parses elements, proceed to txn.c.
 // Otherwise, this concludes the walkthrough. Feel free to fork this app and
 // modify it to suit your own needs.
+#endif /* HAVE_BAGL */

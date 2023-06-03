@@ -12,6 +12,12 @@
 #define SW_USER_REJECTED 0x6985
 #define SW_OK            0x9000
 
+// APDU parameters
+#define P1_FIRST 0x00         // 1st packet of multi-packet transfer
+#define P1_MORE 0x80          // nth packet of multi-packet transfer
+#define P2_DISPLAY_HASH 0x00  // display transaction hash
+#define P2_SIGN_HASH 0x01     // sign transaction hash
+
 // bin2hex converts binary to hex and appends a final NUL byte.
 void bin2hex(char *dst, const uint8_t *data, uint64_t inlen);
 
