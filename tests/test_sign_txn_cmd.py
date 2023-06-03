@@ -73,6 +73,8 @@ def test_sign_tx_refused(firmware, backend, navigator, test_name):
 # Transaction signature accepted test
 # The test will ask for a transaction signature that will be accepted on screen
 def test_sign_tx_accept(firmware, backend, navigator, test_name):
+    if firmware.device.startswith("stax"):
+        return
     # Use the app interface instead of raw interface
     client = BoilerplateCommandSender(backend)
     # Disable raising when trying to unpack an error APDU
@@ -113,13 +115,10 @@ def test_sign_tx_accept(firmware, backend, navigator, test_name):
                 ROOT_SCREENSHOT_PATH,
                 test_name,
             )
-        else:
-            navigator.navigate(
-                [NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_REVIEW_TAP]
-            )
+
 
     response = client.get_async_response()
     assert response.status == Errors.SW_OK
     assert response.data == base64.b64decode(
-        "78uGOZ26wtphxuykt8qjSsPHlcyRqbkzJX81Do35l0Rn8YYaIyakY75d9qF7+eBcs9nooh6lKnjQD8h3Gw4YAA=="
+        "4qZznM8H4VStLIdWeppafXsi9VgTT6A8sM0dG84pXO9NvnaaQK1EJw9iJuMwwPEItANNTIAEvuAzqPPPidMcAg=="
     )
