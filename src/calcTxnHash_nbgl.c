@@ -15,10 +15,8 @@
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
 static void fmtTxnElem(void);
-static void reject(void);
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content);
 static void confirm_callback(bool confirm);
-static void begin_review(void);
 
 // This is a helper function that prepares an element of the transaction for
 // display. It stores the type of the element in labelStr, and a human-
@@ -75,32 +73,26 @@ static void fmtTxnElem(void) {
     }
 }
 
-static void reject(void) {
-    ctx->initialized = false;
+static void confirm_callback(bool confirm) {
     // The final page of hashing doesn't need to send reject because at that
     // point, the client has already received the hash.
-    if (!(!ctx->sign && ctx->finished)) {
-        io_exchange_with_code(SW_USER_REJECTED, 0);
-    }
-    if (ctx->sign) {
-        nbgl_useCaseStatus("Cancelled Signing", false, ui_idle);
-    } else {
-        nbgl_useCaseStatus("Cancelled Hashing", false, ui_idle);
-    }
-}
-
-static void confirm_callback(bool confirm) {
+    const bool finished = ctx->finished;
+    ctx->finished = false;
     ctx->initialized = false;
+
     if (confirm) {
         if (ctx->sign) {
             deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
             io_exchange_with_code(SW_OK, 64);
-            nbgl_useCaseStatus("SIGNED TXN", true, ui_idle);
+            nbgl_useCaseStatus("TRANSACTION SIGNED", true, ui_idle);
         } else {
             nbgl_useCaseStatus("CONFIRMED HASH", true, ui_idle);
         }
     } else {
-        reject();
+        if (!(!ctx->sign && finished)) {
+            io_exchange_with_code(SW_USER_REJECTED, 0);
+        }
+        nbgl_useCaseStatus("Transaction Rejected", false, ui_idle);
     }
 }
 
@@ -169,10 +161,6 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     return true;
 }
 
-static void begin_review(void) {
-    nbgl_useCaseForwardOnlyReview("Cancel", NULL, nav_callback, confirm_callback);
-}
-
 // handleCalcTxnHash reads a signature index and a transaction, calculates the
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
@@ -192,6 +180,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         if (prev_initialized) {
             THROW(SW_IMPROPER_INIT);
         }
+        ctx->finished = false;
         ctx->initialized = true;
 
         // If this is the first packet, it will include the key index, sig
@@ -224,11 +213,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
     txn_update(&ctx->txn, dataBuffer, dataLength);
 
     *flags |= IO_ASYNCH_REPLY;
-    if (prev_initialized) {
-        begin_review();
-    } else {
-        nbgl_useCaseReviewStart(&C_stax_app_sia, (ctx->sign) ? "Sign Transaction" : "Hash Transaction", NULL, "Cancel", begin_review, reject);
-    }
+    nbgl_useCaseRegularReview(0, 0, "Cancel", NULL, nav_callback, confirm_callback);
 }
 
 #endif /* HAVE_BAGL */
