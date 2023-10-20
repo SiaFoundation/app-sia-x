@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"go.sia.tech/core/types"
+	"go.sia.tech/core/consensus"
 
 	"github.com/karalabe/hid"
 	"lukechampine.com/flagg"
@@ -266,70 +267,20 @@ func (n *Nano) SignHash(hash [32]byte, keyIndex uint32) (sig [64]byte, err error
 	return
 }
 
-func encodeV2Transaction(e *types.Encoder, txn *types.V2Transaction) {
-	e.WriteUint8(2)
-	e.WritePrefix(len(txn.SiacoinInputs))
-	for _, in := range txn.SiacoinInputs {
-		in.Parent.ID.EncodeTo(e)
-	}
-	e.WritePrefix(len(txn.SiacoinOutputs))
-	for _, out := range txn.SiacoinOutputs {
-		out.EncodeTo(e)
-	}
-	e.WritePrefix(len(txn.SiafundInputs))
-	for _, in := range txn.SiafundInputs {
-		in.Parent.ID.EncodeTo(e)
-	}
-	e.WritePrefix(len(txn.SiafundOutputs))
-	for _, out := range txn.SiafundOutputs {
-		out.EncodeTo(e)
-	}
-	e.WritePrefix(len(txn.FileContracts))
-	for _, fc := range txn.FileContracts {
-		fc.EncodeTo(e)
-	}
-	e.WritePrefix(len(txn.FileContractRevisions))
-	for _, fcr := range txn.FileContractRevisions {
-		fcr.Parent.ID.EncodeTo(e)
-		fcr.Revision.EncodeTo(e)
-	}
-	e.WritePrefix(len(txn.FileContractResolutions))
-	for _, fcr := range txn.FileContractResolutions {
-		fcr.Parent.ID.EncodeTo(e)
-		// normalize proof
-		if sp, ok := fcr.Resolution.(*types.V2StorageProof); ok {
-			c := *sp // don't modify original
-			c.ProofIndex.MerkleProof = nil
-			fcr.Resolution = &c
-		}
-		fcr.Resolution.(types.EncoderTo).EncodeTo(e)
-	}
-	e.WritePrefix(len(txn.Attestations))
-	for _, a := range txn.Attestations {
-		a.EncodeTo(e)
-	}
-	e.WriteBytes(txn.ArbitraryData)
-	e.WriteBool(txn.NewFoundationAddress != nil)
-	if txn.NewFoundationAddress != nil {
-		txn.NewFoundationAddress.EncodeTo(e)
-	}
-	txn.MinerFee.EncodeTo(e)
-}
-
-func (n *Nano) CalcTxnHash(txn *types.Transaction, v2Txn *types.V2Transaction, sigIndex uint16, changeIndex uint32) (hash [32]byte, err error) {
+func (n *Nano) CalcTxnHash(txn *types.Transaction, v2txn *types.V2Transaction, sigIndex uint16, changeIndex uint32) (hash [32]byte, err error) {
 	var buf bytes.Buffer
 	e := types.NewEncoder(&buf)
 	binary.Write(&buf, binary.LittleEndian, uint32(0)) // keyIndex; ignored since we are not signing
 	binary.Write(&buf, binary.LittleEndian, sigIndex)
 	binary.Write(&buf, binary.LittleEndian, changeIndex)
-	if txn != nil {
-		// v2 = false
-		e.WriteBool(false)
+	e.WriteBool(v2txn != nil)
+	if v2txn == nil {
 		txn.EncodeTo(e)
-	} else if v2Txn != nil {
-		// v2 = true
-		e.WriteBool(true)
-		encodeV2Transaction(e, v2Txn)
+	} else {
+		fmt.Println("Expected:", consensus.State{}.InputSigHash(*v2txn))
+		fmt.Println("Expected:", consensus.State{}.InputSigHash(*v2txn))
+		fmt.Println("Expected:", consensus.State{}.InputSigHash(*v2txn))
+		types.V2TransactionSemantics(*v2txn).EncodeTo(e)
 	}
 	e.Flush()
 
@@ -350,20 +301,17 @@ func (n *Nano) CalcTxnHash(txn *types.Transaction, v2Txn *types.V2Transaction, s
 	return
 }
 
-func (n *Nano) SignTxn(txn *types.Transaction, v2Txn *types.V2Transaction, sigIndex uint16, keyIndex, changeIndex uint32) (sig [64]byte, err error) {
+func (n *Nano) SignTxn(txn *types.Transaction, v2txn *types.V2Transaction, sigIndex uint16, keyIndex, changeIndex uint32) (sig [64]byte, err error) {
 	var buf bytes.Buffer
 	e := types.NewEncoder(&buf)
 	binary.Write(&buf, binary.LittleEndian, keyIndex)
 	binary.Write(&buf, binary.LittleEndian, sigIndex)
 	binary.Write(&buf, binary.LittleEndian, changeIndex)
-	if txn != nil {
-		// v2 = false
-		e.WriteBool(false)
+	e.WriteBool(v2txn != nil)
+	if v2txn == nil {
 		txn.EncodeTo(e)
-	} else if v2Txn != nil {
-		// v2 = true
-		e.WriteBool(true)
-		encodeV2Transaction(e, v2Txn)
+	} else {
+		types.V2TransactionSemantics(*v2txn).EncodeTo(e)
 	}
 	e.Flush()
 
@@ -619,10 +567,10 @@ func main() {
 		sigIndex := uint16(parseIndex(args[1]))
 
 		var txn *types.Transaction
-		var v2Txn *types.V2Transaction
+		var v2txn *types.V2Transaction
 		if *v2 {
-			v2Txn = new(types.V2Transaction)
-			if err := json.Unmarshal(txnBytes, &v2Txn); err != nil {
+			v2txn = new(types.V2Transaction)
+			if err := json.Unmarshal(txnBytes, &v2txn); err != nil {
 				log.Fatalln("Couldn't decode v2 transaction:", err)
 			}
 		} else {
@@ -633,13 +581,13 @@ func main() {
 		}
 
 		if *txnHash {
-			sighash, err := nano.CalcTxnHash(txn, v2Txn, sigIndex, uint32(*txnChangeIndex))
+			sighash, err := nano.CalcTxnHash(txn, v2txn, sigIndex, uint32(*txnChangeIndex))
 			if err != nil {
 				log.Fatalln("Couldn't get hash:", err)
 			}
 			fmt.Println(hex.EncodeToString(sighash[:]))
 		} else {
-			sig, err := nano.SignTxn(txn, v2Txn, sigIndex, parseIndex(args[2]), uint32(*txnChangeIndex))
+			sig, err := nano.SignTxn(txn, v2txn, sigIndex, parseIndex(args[2]), uint32(*txnChangeIndex))
 			if err != nil {
 				log.Fatalln("Couldn't get signature:", err)
 			}

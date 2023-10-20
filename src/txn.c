@@ -317,6 +317,7 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn) {
 
 void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
     memset(txn, 0, sizeof(txn_state_t));
+    txn->v2 = false;
     txn->buflen = txn->pos = txn->sliceIndex = txn->displayIndex = txn->sliceLen = txn->valLen = 0;
     txn->elemType = -1;  // first increment brings it to SC_INPUT
     txn->sigIndex = sigIndex;

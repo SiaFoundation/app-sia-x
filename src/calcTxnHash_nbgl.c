@@ -11,6 +11,7 @@
 #include "sia.h"
 #include "sia_ux.h"
 #include "txn.h"
+#include "txn_wrapper.h"
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
@@ -27,6 +28,7 @@ static void fmtTxnElem(void) {
 
     switch (txn->elemType) {
         case TXN_ELEM_SC_OUTPUT:
+        case V2TXN_ELEM_SC_OUTPUT:
             memmove(ctx->labelStr, "SC Output #", 11);
             bin2dec(ctx->labelStr + 11, txn->displayIndex);
             // An element can have multiple screens. For each siacoin output, the
@@ -44,6 +46,7 @@ static void fmtTxnElem(void) {
             break;
 
         case TXN_ELEM_SF_OUTPUT:
+        case V2TXN_ELEM_SF_OUTPUT:
             memmove(ctx->labelStr, "SF Output #", 11);
             bin2dec(ctx->labelStr + 11, txn->displayIndex);
             if (ctx->elemPart == 0) {
@@ -57,6 +60,7 @@ static void fmtTxnElem(void) {
             break;
 
         case TXN_ELEM_MINER_FEE:
+        case V2TXN_ELEM_MINER_FEE:
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, txn->sliceIndex);
@@ -106,7 +110,7 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
         // Attempt to decode the next element of the transaction. Note that this
         // code is essentially identical to ui_calcTxnHash_elem_button. Sadly,
         // there doesn't seem to be a clean way to avoid this duplication.
-        switch (txn_next_elem(&ctx->txn)) {
+        switch (txn_wrapper_next_elem(&ctx->txn)) {
             case TXN_STATE_ERR:
                 io_exchange_with_code(SW_INVALID_PARAM, 0);
                 return false;
@@ -195,7 +199,10 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         uint32_t changeIndex = U4LE(dataBuffer, 0);
         dataBuffer += 4;
         dataLength -= 4;
-        txn_init(&ctx->txn, sigIndex, changeIndex);
+        ctx->txn.v2 = dataBuffer[0];
+        dataBuffer += 1;
+        dataLength -= 1;
+        txn_wrapper_init(&ctx->txn, sigIndex, changeIndex);
 
         // Set ctx->sign according to P2.
         ctx->sign = (p2 & P2_SIGN_HASH);
@@ -210,7 +217,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
     }
 
     // Add the new data to transaction decoder.
-    txn_update(&ctx->txn, dataBuffer, dataLength);
+    txn_wrapper_update(&ctx->txn, dataBuffer, dataLength);
 
     *flags |= IO_ASYNCH_REPLY;
     nbgl_useCaseRegularReview(0, 0, "Cancel", NULL, nav_callback, confirm_callback);

@@ -29,11 +29,25 @@ typedef enum {
 	TXN_ELEM_MINER_FEE,
 	TXN_ELEM_ARB_DATA,
 	TXN_ELEM_TXN_SIG,
+
+    V2TXN_ELEM_SC_INPUT,
+    V2TXN_ELEM_SC_OUTPUT,
+    V2TXN_ELEM_SF_INPUT,
+    V2TXN_ELEM_SF_OUTPUT,
+    V2TXN_ELEM_FC,
+    V2TXN_ELEM_FC_REVISIONS,
+    V2TXN_ELEM_FC_RESOLUTIONS,
+    V2TXN_ELEM_ATTESTATIONS,
+    V2TXN_ELEM_ARB_DATA,
+    V2TXN_ELEM_FDN_ADDR,
+    V2TXN_ELEM_MINER_FEE,
 } txnElemType_e;
 
 // txn_state_t is a helper object for computing the SigHash of a streamed
 // transaction.
 typedef struct {
+	uint8_t v2;
+
 	uint8_t buf[510]; // holds raw tx bytes; large enough for two 0xFF reads
 	uint16_t buflen;  // number of valid bytes in buf
 	uint16_t pos;     // mid-decode offset; reset to 0 after each elem
