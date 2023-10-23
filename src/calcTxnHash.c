@@ -195,7 +195,6 @@ static void fmtTxnElem() {
 
         case TXN_ELEM_MINER_FEE:
         case V2TXN_ELEM_MINER_FEE:
-            PRINTF("DISPLAYING MINER FEE!\n");
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, txn->sliceIndex);

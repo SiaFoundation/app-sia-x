@@ -17,7 +17,6 @@ import (
 	"strconv"
 
 	"go.sia.tech/core/types"
-	"go.sia.tech/core/consensus"
 
 	"github.com/karalabe/hid"
 	"lukechampine.com/flagg"
@@ -277,9 +276,6 @@ func (n *Nano) CalcTxnHash(txn *types.Transaction, v2txn *types.V2Transaction, s
 	if v2txn == nil {
 		txn.EncodeTo(e)
 	} else {
-		fmt.Println("Expected:", consensus.State{}.InputSigHash(*v2txn))
-		fmt.Println("Expected:", consensus.State{}.InputSigHash(*v2txn))
-		fmt.Println("Expected:", consensus.State{}.InputSigHash(*v2txn))
 		types.V2TransactionSemantics(*v2txn).EncodeTo(e)
 	}
 	e.Flush()
