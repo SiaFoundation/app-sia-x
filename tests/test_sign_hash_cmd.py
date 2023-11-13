@@ -9,7 +9,7 @@ from application_client.boilerplate_response_unpacker import (
 from ragger.backend import RaisePolicy
 from ragger.navigator import NavInsID
 from ragger.bip import calculate_public_key_and_chaincode, CurveChoice
-from utils import ROOT_SCREENSHOT_PATH, check_signature_validity
+from utils import ROOT_SCREENSHOT_PATH
 
 test_to_sign = bytes.fromhex(
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

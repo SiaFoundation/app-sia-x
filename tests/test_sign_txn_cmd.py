@@ -9,7 +9,7 @@ from application_client.boilerplate_response_unpacker import (
 )
 from ragger.backend import RaisePolicy
 from ragger.navigator import NavInsID
-from utils import ROOT_SCREENSHOT_PATH, check_signature_validity
+from utils import ROOT_SCREENSHOT_PATH
 
 # In this tests we check the behavior of the device when asked to sign a transaction
 

@@ -5,7 +5,11 @@
 
 #include "blake2b.h"
 
-#define MAX_ELEMS 32
+#ifdef TARGET_NANOS
+#define MAX_ELEMS 6
+#else
+#define MAX_ELEMS 64
+#endif
 
 // macros for converting raw bytes to uint64_t
 #define U8BE(buf, off) (((uint64_t)(U4BE(buf, off))     << 32) | ((uint64_t)(U4BE(buf, off + 4)) & 0xFFFFFFFF))
@@ -39,7 +43,6 @@ typedef struct {
     uint8_t outVal[128];    // most-recently-seen currency value, in decimal
     uint8_t valLen;         // length of outVal
     uint8_t outAddr[77];    // most-recently-seen address
-    uint16_t displayIndex;  // index of element being displayed
 } txn_elem_t;
 
 // txn_state_t is a helper object for computing the SigHash of a streamed
@@ -54,13 +57,11 @@ typedef struct {
 
 	uint64_t sliceLen;      // most-recently-seen slice length prefix
 	uint16_t sliceIndex;    // offset within current element slice
-	uint16_t displayIndex;  // index of element being displayed
 
 	uint16_t sigIndex;   // index of TxnSig being computed
     uint8_t changeAddr[77]; // change address
 	cx_blake2b_t blake;  // hash state
 	uint8_t sigHash[32]; // buffer to hold final hash
-
 } txn_state_t;
 
 // txn_init initializes a transaction decoder, preparing it to calculate the
@@ -76,5 +77,9 @@ void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);
 // encountered, it returns TXN_STATE_ERR. If the transaction has been fully
 // decoded, it returns TXN_STATE_FINISHED.
 txnDecoderState_e txn_next_elem(txn_state_t *txn);
+
+// display_index returns the current display index for UI purposes based
+// on the current elementIndex.
+uint16_t display_index(txn_state_t *txn);
 
 #endif /* TXN_H */
