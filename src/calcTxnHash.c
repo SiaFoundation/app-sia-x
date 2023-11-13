@@ -160,33 +160,33 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
 static void fmtTxnElem() {
     txn_state_t *txn = &ctx->txn;
 
-    switch (txn->elemType) {
+    switch (txn->elements[txn->elementIndex - 1].elemType) {
         case TXN_ELEM_SC_OUTPUT:
             memmove(ctx->labelStr, "SC Output #", 11);
-            bin2dec(ctx->labelStr + 11, txn->displayIndex);
+            bin2dec(ctx->labelStr + 11, txn->elements[txn->elementIndex - 1].displayIndex);
             // An element can have multiple screens. For each siacoin output, the
             // user needs to see both the destination address and the amount.
             // These are rendered in separate screens, and elemPart is used to
             // identify which screen is being viewed.
             if (ctx->elemPart == 0) {
-                memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
+                memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outAddr, sizeof(txn->elements[txn->elementIndex - 1].outAddr));
                 ctx->elemPart++;
             } else {
-                memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
-                formatSC(ctx->fullStr, txn->valLen);
+                memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outVal, sizeof(txn->elements[txn->elementIndex - 1].outVal));
+                formatSC(ctx->fullStr, txn->elements[txn->elementIndex - 1].valLen);
                 ctx->elemPart = 0;
             }
             break;
 
         case TXN_ELEM_SF_OUTPUT:
             memmove(ctx->labelStr, "SF Output #", 11);
-            bin2dec(ctx->labelStr + 11, txn->displayIndex);
+            bin2dec(ctx->labelStr + 11, txn->elements[txn->elementIndex - 1].displayIndex);
             if (ctx->elemPart == 0) {
-                memmove(ctx->fullStr, txn->outAddr, sizeof(txn->outAddr));
+                memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outAddr, sizeof(txn->elements[txn->elementIndex - 1].outAddr));
                 ctx->elemPart++;
             } else {
-                memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
-                memmove(ctx->fullStr + txn->valLen, " SF", 4);
+                memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outVal, sizeof(txn->elements[txn->elementIndex - 1].outVal));
+                memmove(ctx->fullStr + txn->elements[txn->elementIndex - 1].valLen, " SF", 4);
                 ctx->elemPart = 0;
             }
             break;
@@ -195,8 +195,8 @@ static void fmtTxnElem() {
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, txn->sliceIndex);
-            memmove(ctx->fullStr, txn->outVal, sizeof(txn->outVal));
-            formatSC(ctx->fullStr, txn->valLen);
+            memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outVal, sizeof(txn->elements[txn->elementIndex - 1].outVal));
+            formatSC(ctx->fullStr, txn->elements[txn->elementIndex - 1].valLen);
             ctx->elemPart = 0;
             break;
 

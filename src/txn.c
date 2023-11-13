@@ -114,7 +114,7 @@ static void seek(txn_state_t *txn, uint64_t n) {
 
 static void advance(txn_state_t *txn) {
     // if elem is covered, add it to the hash
-    if (txn->elemType != TXN_ELEM_TXN_SIG) {
+    if (txn->elements[txn->elementIndex].elemType != TXN_ELEM_TXN_SIG) {
         blake2b_update(&txn->blake, txn->buf, txn->pos);
     } else if (txn->sliceIndex == txn->sigIndex && txn->pos >= 48) {
         // add just the ParentID, Timelock, and PublicKeyIndex
@@ -137,7 +137,7 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
     uint64_t valLen = readInt(txn);
     need_at_least(txn, valLen);
     if (outVal) {
-        txn->valLen = cur2dec(outVal, txn->buf + txn->pos - 8);
+        txn->elements[txn->elementIndex].valLen = cur2dec(outVal, txn->buf + txn->pos - 8);
     }
     seek(txn, valLen);
 }
@@ -193,55 +193,74 @@ static void addReplayProtection(cx_blake2b_t *S) {
 
 // throws txnDecoderState_e
 static void __txn_next_elem(txn_state_t *txn) {
+    if (txn->elementIndex == MAX_ELEMS - 1) {
+        THROW(TXN_STATE_ERR);
+    }
     // if we're on a slice boundary, read the next length prefix and bump the
     // element type
     while (txn->sliceIndex == txn->sliceLen) {
-        if (txn->elemType == TXN_ELEM_TXN_SIG) {
+        if (txn->elements[txn->elementIndex].elemType == TXN_ELEM_TXN_SIG) {
             // store final hash
             blake2b_final(&txn->blake, txn->sigHash, sizeof(txn->sigHash));
             THROW(TXN_STATE_FINISHED);
         }
+        // too many elements
         txn->sliceLen = readInt(txn);
         txn->sliceIndex = 0;
         txn->displayIndex = 0;
-        txn->elemType++;
+        txn->elements[txn->elementIndex].elemType++;
         advance(txn);
 
         // if we've reached the TransactionSignatures, check that sigIndex is
         // a valid index
-        if ((txn->elemType == TXN_ELEM_TXN_SIG) && (txn->sigIndex >= txn->sliceLen)) {
+        if ((txn->elements[txn->elementIndex].elemType == TXN_ELEM_TXN_SIG) && (txn->sigIndex >= txn->sliceLen)) {
             THROW(TXN_STATE_ERR);
         }
     }
 
-    switch (txn->elemType) {
+    switch (txn->elements[txn->elementIndex].elemType) {
         // these elements should be displayed
         case TXN_ELEM_SC_OUTPUT:
-            readCurrency(txn, txn->outVal);       // Value
-            readHash(txn, (char *)txn->outAddr);  // UnlockHash
+            readCurrency(txn, txn->elements[txn->elementIndex].outVal);       // Value
+            readHash(txn, (char *)txn->elements[txn->elementIndex].outAddr);  // UnlockHash
             advance(txn);
-            txn->sliceIndex++;
-            if (!memcmp(txn->outAddr, txn->changeAddr, sizeof(txn->outAddr))) {
+            if (!memcmp(txn->elements[txn->elementIndex].outAddr, txn->changeAddr, sizeof(txn->elements[txn->elementIndex].outAddr))) {
                 // do not display the change address or increment displayIndex
                 return;
             }
+
+            txn->sliceIndex++;
             txn->displayIndex++;
+            txn->elements[txn->elementIndex].displayIndex = txn->displayIndex;
+            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elementIndex++;
+
             THROW(TXN_STATE_READY);
 
         case TXN_ELEM_SF_OUTPUT:
-            readCurrency(txn, txn->outVal);       // Value
-            readHash(txn, (char *)txn->outAddr);  // UnlockHash
-            readCurrency(txn, NULL);              // ClaimStart
+            readCurrency(txn, txn->elements[txn->elementIndex].outVal);       // Value
+            readHash(txn, (char *)txn->elements[txn->elementIndex].outAddr);  // UnlockHash
+            readCurrency(txn, NULL);                                          // ClaimStart
             advance(txn);
+
             txn->sliceIndex++;
             txn->displayIndex++;
+            txn->elements[txn->elementIndex].displayIndex = txn->displayIndex;
+            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elementIndex++;
+
             THROW(TXN_STATE_READY);
 
         case TXN_ELEM_MINER_FEE:
-            readCurrency(txn, txn->outVal);  // Value
-            memmove(txn->outAddr, "[Miner Fee]", 12);
+            readCurrency(txn, txn->elements[txn->elementIndex].outVal);  // Value
+            memmove(txn->elements[txn->elementIndex].outAddr, "[Miner Fee]", 12);
             advance(txn);
+
             txn->sliceIndex++;
+            txn->elements[txn->elementIndex].displayIndex = txn->displayIndex;
+            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elementIndex++;
+
             THROW(TXN_STATE_READY);
 
         // these elements should be decoded, but not displayed
@@ -317,9 +336,10 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn) {
 
 void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
     memset(txn, 0, sizeof(txn_state_t));
-    txn->buflen = txn->pos = txn->sliceIndex = txn->displayIndex = txn->sliceLen = txn->valLen = 0;
-    txn->elemType = -1;  // first increment brings it to SC_INPUT
     txn->sigIndex = sigIndex;
+
+    txn->elementIndex = 0;
+    txn->elements[txn->elementIndex].elemType = -1;  // first increment brings it to SC_INPUT
 
     cx_ecfp_public_key_t publicKey = {0};
     deriveSiaKeypair(changeIndex, NULL, &publicKey);
