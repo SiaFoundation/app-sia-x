@@ -191,9 +191,22 @@ static void addReplayProtection(cx_blake2b_t *S) {
     blake2b_update(S, replayPrefix, 1);
 }
 
+uint16_t display_index(txn_state_t *txn) {
+    uint16_t first_index_of_type = 0;
+    const txnElemType_e current_type = txn->elements[txn->elementIndex - 1].elemType;
+    for (uint16_t i = 0; i < txn->elementIndex; i++) {
+        if (current_type == txn->elements[i].elemType) {
+            first_index_of_type = i;
+            break;
+        }
+    }
+    return txn->elementIndex - first_index_of_type;
+}
+
 // throws txnDecoderState_e
 static void __txn_next_elem(txn_state_t *txn) {
-    if (txn->elementIndex == MAX_ELEMS - 1) {
+    // too many elements
+    if (txn->elementIndex == MAX_ELEMS) {
         THROW(TXN_STATE_ERR);
     }
     // if we're on a slice boundary, read the next length prefix and bump the
@@ -207,7 +220,6 @@ static void __txn_next_elem(txn_state_t *txn) {
         // too many elements
         txn->sliceLen = readInt(txn);
         txn->sliceIndex = 0;
-        txn->displayIndex = 0;
         txn->elements[txn->elementIndex].elemType++;
         advance(txn);
 
@@ -230,8 +242,6 @@ static void __txn_next_elem(txn_state_t *txn) {
             }
 
             txn->sliceIndex++;
-            txn->displayIndex++;
-            txn->elements[txn->elementIndex].displayIndex = txn->displayIndex;
             txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
 
@@ -244,8 +254,6 @@ static void __txn_next_elem(txn_state_t *txn) {
             advance(txn);
 
             txn->sliceIndex++;
-            txn->displayIndex++;
-            txn->elements[txn->elementIndex].displayIndex = txn->displayIndex;
             txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
 
@@ -257,7 +265,6 @@ static void __txn_next_elem(txn_state_t *txn) {
             advance(txn);
 
             txn->sliceIndex++;
-            txn->elements[txn->elementIndex].displayIndex = txn->displayIndex;
             txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
 
