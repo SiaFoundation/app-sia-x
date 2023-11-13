@@ -5,6 +5,8 @@
 
 #include "blake2b.h"
 
+#define MAX_ELEMS 32
+
 // macros for converting raw bytes to uint64_t
 #define U8BE(buf, off) (((uint64_t)(U4BE(buf, off))     << 32) | ((uint64_t)(U4BE(buf, off + 4)) & 0xFFFFFFFF))
 #define U8LE(buf, off) (((uint64_t)(U4LE(buf, off + 4)) << 32) | ((uint64_t)(U4LE(buf, off))     & 0xFFFFFFFF))
@@ -31,6 +33,15 @@ typedef enum {
 	TXN_ELEM_TXN_SIG,
 } txnElemType_e;
 
+typedef struct {
+    txnElemType_e elemType; // type of most-recently-seen element
+
+    uint8_t outVal[128];    // most-recently-seen currency value, in decimal
+    uint8_t valLen;         // length of outVal
+    uint8_t outAddr[77];    // most-recently-seen address
+    uint16_t displayIndex;  // index of element being displayed
+} txn_elem_t;
+
 // txn_state_t is a helper object for computing the SigHash of a streamed
 // transaction.
 typedef struct {
@@ -38,19 +49,18 @@ typedef struct {
 	uint16_t buflen;  // number of valid bytes in buf
 	uint16_t pos;     // mid-decode offset; reset to 0 after each elem
 
-	txnElemType_e elemType; // type of most-recently-seen element
+	uint16_t elementIndex;
+	txn_elem_t elements[MAX_ELEMS]; // only elements that will be displayed
+
 	uint64_t sliceLen;      // most-recently-seen slice length prefix
 	uint16_t sliceIndex;    // offset within current element slice
 	uint16_t displayIndex;  // index of element being displayed
 
 	uint16_t sigIndex;   // index of TxnSig being computed
+    uint8_t changeAddr[77]; // change address
 	cx_blake2b_t blake;  // hash state
 	uint8_t sigHash[32]; // buffer to hold final hash
 
-	uint8_t outVal[128];    // most-recently-seen currency value, in decimal
-	uint8_t valLen;         // length of outVal
-	uint8_t outAddr[77];    // most-recently-seen address
-	uint8_t changeAddr[77]; // change address
 } txn_state_t;
 
 // txn_init initializes a transaction decoder, preparing it to calculate the
