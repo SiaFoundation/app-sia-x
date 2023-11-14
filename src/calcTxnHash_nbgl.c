@@ -14,11 +14,13 @@
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
-static void fmtTxnElem();
+static void fmtTxnElem(void);
+static uint16_t display_index(void);
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content);
 static void confirm_callback(bool confirm);
 
-static uint16_t display_index() {
+// Gets the current index number to be displayed in the UI
+static uint16_t display_index(void) {
     txn_state_t *txn = &ctx->txn;
     uint16_t first_index_of_type = 0;
     const txnElemType_e current_type = txn->elements[ctx->elementIndex].elemType;
@@ -35,13 +37,13 @@ static uint16_t display_index() {
 // display. It stores the type of the element in labelStr, and a human-
 // readable representation of the element in fullStr. As in previous screens,
 // partialStr holds the visible portion of fullStr.
-static void fmtTxnElem() {
+static void fmtTxnElem(void) {
     txn_state_t *txn = &ctx->txn;
 
     switch (txn->elements[ctx->elementIndex].elemType) {
         case TXN_ELEM_SC_OUTPUT:
             memmove(ctx->labelStr, "SC Output #", 11);
-            bin2dec(ctx->labelStr + 11, display_index(txn));
+            bin2dec(ctx->labelStr + 11, display_index());
             // An element can have multiple screens. For each siacoin output, the
             // user needs to see both the destination address and the amount.
             // These are rendered in separate screens, and elemPart is used to
@@ -53,7 +55,7 @@ static void fmtTxnElem() {
 
         case TXN_ELEM_SF_OUTPUT:
             memmove(ctx->labelStr, "SF Output #", 11);
-            bin2dec(ctx->labelStr + 11, display_index(txn));
+            bin2dec(ctx->labelStr + 11, display_index());
             memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr, sizeof(txn->elements[ctx->elementIndex].outAddr));
             memmove(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
             memmove(ctx->fullStr[1] + txn->elements[ctx->elementIndex].valLen, " SF", 4);
@@ -62,7 +64,7 @@ static void fmtTxnElem() {
         case TXN_ELEM_MINER_FEE:
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
-            bin2dec(ctx->labelStr + 11, display_index(txn));
+            bin2dec(ctx->labelStr + 11, display_index());
             memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
             formatSC(ctx->fullStr[0], txn->elements[ctx->elementIndex].valLen);
             break;
