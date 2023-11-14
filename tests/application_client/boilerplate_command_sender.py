@@ -118,8 +118,6 @@ class BoilerplateCommandSender:
     @contextmanager
     def sign_tx(
         self,
-        skip_loop,
-        skip_end,
         key_index: int,
         sig_index: int,
         change_index: int,
@@ -140,9 +138,8 @@ class BoilerplateCommandSender:
                 p1=p1,
                 p2=P2.P2_SIGN_HASH,
                 data=messages[i],
-            ):
-                skip_loop()
-
+            ) as response:
+                yield response
             p1 = P1.P1_MORE
 
         with self.backend.exchange_async(
@@ -152,7 +149,6 @@ class BoilerplateCommandSender:
             p2=P2.P2_SIGN_HASH,
             data=messages[-1],
         ) as response:
-            skip_end()
             yield response
 
     def get_async_response(self) -> Optional[RAPDU]:
