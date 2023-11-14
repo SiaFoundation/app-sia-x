@@ -106,6 +106,7 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     UNUSED(page);
     ctx->elementIndex = page;
     if (ctx->elementIndex >= ctx->txn.elementIndex) {
+        const bool wasFinished = ctx->finished;
         ctx->finished = true;
 
         content->type = INFO_LONG_PRESS;
@@ -119,7 +120,10 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
             content->infoLongPress.longPressText = ctx->fullStr[0];
         } else {
             memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
-            io_exchange_with_code(SW_OK, 32);
+            // prevent this from being sent twice and causing device to hang
+            if (!wasFinished) {
+                io_exchange_with_code(SW_OK, 32);
+            }
             bin2hex(ctx->fullStr[0], ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
 
             content->infoLongPress.text = ctx->fullStr[0];
