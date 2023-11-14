@@ -191,18 +191,6 @@ static void addReplayProtection(cx_blake2b_t *S) {
     blake2b_update(S, replayPrefix, 1);
 }
 
-uint16_t display_index(txn_state_t *txn) {
-    uint16_t first_index_of_type = 0;
-    const txnElemType_e current_type = txn->elements[txn->elementIndex - 1].elemType;
-    for (uint16_t i = 0; i < txn->elementIndex; i++) {
-        if (current_type == txn->elements[i].elemType) {
-            first_index_of_type = i;
-            break;
-        }
-    }
-    return txn->elementIndex - first_index_of_type;
-}
-
 // throws txnDecoderState_e
 static void __txn_next_elem(txn_state_t *txn) {
     // too many elements
@@ -244,8 +232,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             txn->sliceIndex++;
             txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
-
-            THROW(TXN_STATE_READY);
+            return;
 
         case TXN_ELEM_SF_OUTPUT:
             readCurrency(txn, txn->elements[txn->elementIndex].outVal);       // Value
@@ -256,8 +243,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             txn->sliceIndex++;
             txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
-
-            THROW(TXN_STATE_READY);
+            return;
 
         case TXN_ELEM_MINER_FEE:
             readCurrency(txn, txn->elements[txn->elementIndex].outVal);  // Value
@@ -267,8 +253,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             txn->sliceIndex++;
             txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
-
-            THROW(TXN_STATE_READY);
+            return;
 
         // these elements should be decoded, but not displayed
         case TXN_ELEM_SC_INPUT:
@@ -310,7 +295,7 @@ static void __txn_next_elem(txn_state_t *txn) {
     }
 }
 
-txnDecoderState_e txn_next_elem(txn_state_t *txn) {
+txnDecoderState_e txn_parse(txn_state_t *txn) {
     // Like many transaction decoders, we use exceptions to jump out of deep
     // call stacks when we encounter an error. There are two important rules
     // for Ledger exceptions: declare modified variables as volatile, and do

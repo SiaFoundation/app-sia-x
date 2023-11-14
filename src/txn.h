@@ -71,15 +71,11 @@ void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex);
 // txn_update adds data to a transaction decoder.
 void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);
 
-// txn_next_elem decodes the next element of the transaction. If the element
+// txn_parse decodes the the transaction. If elements
 // is ready for display, txn_next_elem returns TXN_STATE_READY. If more data
 // is required, it returns TXN_STATE_PARTIAL. If a decoding error is
 // encountered, it returns TXN_STATE_ERR. If the transaction has been fully
 // decoded, it returns TXN_STATE_FINISHED.
-txnDecoderState_e txn_next_elem(txn_state_t *txn);
-
-// display_index returns the current display index for UI purposes based
-// on the current elementIndex.
-uint16_t display_index(txn_state_t *txn);
+txnDecoderState_e txn_parse(txn_state_t *txn);
 
 #endif /* TXN_H */

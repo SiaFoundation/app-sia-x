@@ -37,10 +37,13 @@ typedef struct {
 	uint32_t keyIndex;
 	bool sign;
 	uint8_t elemPart; // screen index of elements
+
+	uint16_t elementIndex;
+
 	txn_state_t txn;
 	// NULL-terminated strings for display
 	char labelStr[40]; // variable length
-	char fullStr[128]; // variable length
+	char fullStr[2][128]; // variable length
 	bool initialized; // protects against certain attacks
 	bool finished; // whether we have reached the end of the transaction
 } calcTxnHashContext_t;
