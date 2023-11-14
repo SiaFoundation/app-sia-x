@@ -14,18 +14,31 @@
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
-static void fmtTxnElem(void);
+static void fmtTxnElem();
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content);
 static void confirm_callback(bool confirm);
+
+static uint16_t display_index() {
+    txn_state_t *txn = &ctx->txn;
+    uint16_t first_index_of_type = 0;
+    const txnElemType_e current_type = txn->elements[ctx->elementIndex].elemType;
+    for (uint16_t i = 0; i < txn->elementIndex; i++) {
+        if (current_type == txn->elements[i].elemType) {
+            first_index_of_type = i;
+            break;
+        }
+    }
+    return ctx->elementIndex - first_index_of_type + 1;
+}
 
 // This is a helper function that prepares an element of the transaction for
 // display. It stores the type of the element in labelStr, and a human-
 // readable representation of the element in fullStr. As in previous screens,
 // partialStr holds the visible portion of fullStr.
-static void fmtTxnElem(void) {
+static void fmtTxnElem() {
     txn_state_t *txn = &ctx->txn;
 
-    switch (txn->elements[txn->elementIndex - 1].elemType) {
+    switch (txn->elements[ctx->elementIndex].elemType) {
         case TXN_ELEM_SC_OUTPUT:
             memmove(ctx->labelStr, "SC Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index(txn));
@@ -33,36 +46,25 @@ static void fmtTxnElem(void) {
             // user needs to see both the destination address and the amount.
             // These are rendered in separate screens, and elemPart is used to
             // identify which screen is being viewed.
-            if (ctx->elemPart == 0) {
-                memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outAddr, sizeof(txn->elements[txn->elementIndex - 1].outAddr));
-                ctx->elemPart++;
-            } else {
-                memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outVal, sizeof(txn->elements[txn->elementIndex - 1].outVal));
-                formatSC(ctx->fullStr, txn->elements[txn->elementIndex - 1].valLen);
-                ctx->elemPart = 0;
-            }
+            memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr, sizeof(txn->elements[ctx->elementIndex].outAddr));
+            memmove(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
+            formatSC(ctx->fullStr[1], txn->elements[ctx->elementIndex].valLen);
             break;
 
         case TXN_ELEM_SF_OUTPUT:
             memmove(ctx->labelStr, "SF Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index(txn));
-            if (ctx->elemPart == 0) {
-                memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outAddr, sizeof(txn->elements[txn->elementIndex - 1].outAddr));
-                ctx->elemPart++;
-            } else {
-                memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outVal, sizeof(txn->elements[txn->elementIndex - 1].outVal));
-                memmove(ctx->fullStr + txn->elements[txn->elementIndex - 1].valLen, " SF", 4);
-                ctx->elemPart = 0;
-            }
+            memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr, sizeof(txn->elements[ctx->elementIndex].outAddr));
+            memmove(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
+            memmove(ctx->fullStr[1] + txn->elements[ctx->elementIndex].valLen, " SF", 4);
             break;
 
         case TXN_ELEM_MINER_FEE:
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, display_index(txn));
-            memmove(ctx->fullStr, txn->elements[txn->elementIndex - 1].outVal, sizeof(txn->elements[txn->elementIndex - 1].outVal));
-            formatSC(ctx->fullStr, txn->elements[txn->elementIndex - 1].valLen);
-            ctx->elemPart = 0;
+            memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
+            formatSC(ctx->fullStr[0], txn->elements[ctx->elementIndex].valLen);
             break;
 
         default:
@@ -96,61 +98,57 @@ static void confirm_callback(bool confirm) {
     }
 }
 
-static nbgl_layoutTagValue_t pair;
+static nbgl_layoutTagValue_t pairs[3];
 
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     UNUSED(page);
-    if (ctx->elemPart > 0) {
-        fmtTxnElem();
-    } else {
-        // Attempt to decode the next element of the transaction. Note that this
-        // code is essentially identical to ui_calcTxnHash_elem_button. Sadly,
-        // there doesn't seem to be a clean way to avoid this duplication.
-        switch (txn_next_elem(&ctx->txn)) {
-            case TXN_STATE_ERR:
-                io_exchange_with_code(SW_INVALID_PARAM, 0);
-                return false;
-                break;
-            case TXN_STATE_PARTIAL:
-                io_exchange_with_code(SW_OK, 0);
-                return false;
-                break;
-            case TXN_STATE_READY:
-                ctx->elemPart = 0;
-                fmtTxnElem();
-                break;
-            case TXN_STATE_FINISHED:
-                ctx->finished = true;
+    ctx->elementIndex = page;
+    if (ctx->elementIndex >= ctx->txn.elementIndex) {
+        ctx->finished = true;
 
-                content->type = INFO_LONG_PRESS;
-                content->infoLongPress.icon = &C_stax_app_sia;
-                if (ctx->sign) {
-                    memmove(ctx->fullStr, "with key #", 10);
-                    bin2dec(ctx->fullStr + 10, ctx->keyIndex);
-                    memmove(ctx->fullStr + 10 + (bin2dec(ctx->fullStr + 10, ctx->keyIndex)), "?", 2);
+        content->type = INFO_LONG_PRESS;
+        content->infoLongPress.icon = &C_stax_app_sia;
+        if (ctx->sign) {
+            memmove(ctx->fullStr[0], "with key #", 10);
+            bin2dec(ctx->fullStr[0] + 10, ctx->keyIndex);
+            memmove(ctx->fullStr[0] + 10 + (bin2dec(ctx->fullStr[0] + 10, ctx->keyIndex)), "?", 2);
 
-                    content->infoLongPress.text = "Sign Transaction";
-                    content->infoLongPress.longPressText = ctx->fullStr;
-                } else {
-                    memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
-                    io_exchange_with_code(SW_OK, 32);
-                    bin2hex(ctx->fullStr, ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
+            content->infoLongPress.text = "Sign Transaction";
+            content->infoLongPress.longPressText = ctx->fullStr[0];
+        } else {
+            memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
+            io_exchange_with_code(SW_OK, 32);
+            bin2hex(ctx->fullStr[0], ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
 
-                    content->infoLongPress.text = ctx->fullStr;
-                    content->infoLongPress.longPressText = "Confirm Hash";
-                }
-                return true;
-                break;
+            content->infoLongPress.text = ctx->fullStr[0];
+            content->infoLongPress.longPressText = "Confirm Hash";
         }
+        return true;
     }
 
-    pair.item = ctx->labelStr;
-    pair.value = ctx->fullStr;
+    fmtTxnElem();
 
-    content->type = TAG_VALUE_LIST;
+    pairs[0].item = "Label";
+    pairs[0].value = ctx->labelStr;
+
+    if (ctx->txn.elements[ctx->elementIndex].elemType == TXN_ELEM_MINER_FEE) {
+        pairs[1].item = "Value";
+        pairs[1].value = ctx->fullStr[0];
+
+        content->tagValueList.nbPairs = 2;
+        content->tagValueList.pairs = &pairs;
+    } else {
+        pairs[1].item = "Address";
+        pairs[1].value = ctx->fullStr[0];
+        pairs[2].item = "Value";
+        pairs[2].value = ctx->fullStr[1];
+
+        content->tagValueList.nbPairs = 3;
+        content->tagValueList.pairs = &pairs;
+    }
+
     content->title = NULL;
-    content->tagValueList.nbPairs = 1;
-    content->tagValueList.pairs = &pair;
+    content->type = TAG_VALUE_LIST;
     content->tagValueList.callback = NULL;
 
     content->tagValueList.startIndex = 0;
@@ -180,6 +178,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         if (prev_initialized) {
             THROW(SW_IMPROPER_INIT);
         }
+        ctx->elementIndex = 0;
         ctx->finished = false;
         ctx->initialized = true;
 
@@ -213,7 +212,17 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
     txn_update(&ctx->txn, dataBuffer, dataLength);
 
     *flags |= IO_ASYNCH_REPLY;
-    nbgl_useCaseRegularReview(0, 0, "Cancel", NULL, nav_callback, confirm_callback);
+    switch (txn_parse(&ctx->txn)) {
+        case TXN_STATE_ERR:
+            io_exchange_with_code(SW_INVALID_PARAM, 0);
+            break;
+        case TXN_STATE_PARTIAL:
+            io_exchange_with_code(SW_OK, 0);
+            break;
+        case TXN_STATE_FINISHED:
+            nbgl_useCaseRegularReview(0, 0, "Cancel", NULL, nav_callback, confirm_callback);
+            break;
+    }
 }
 
 #endif /* HAVE_BAGL */
