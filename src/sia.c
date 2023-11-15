@@ -2,6 +2,7 @@
 
 #include <cx.h>
 #include <os.h>
+#include <os_seed.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -9,17 +10,25 @@
 #include "blake2b.h"
 
 void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey) {
-    uint8_t keySeed[32];
+    uint8_t keySeed[64];
     cx_ecfp_private_key_t pk;
 
     // bip32 path for 44'/93'/n'/0'/0'
     uint32_t bip32Path[] = {44 | 0x80000000, 93 | 0x80000000, index | 0x80000000, 0x80000000, 0x80000000};
-    os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, keySeed, NULL, NULL, 0);
+    if (os_derive_bip32_with_seed_no_throw(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, keySeed, NULL, NULL, 0)) {
+        THROW(SW_DEVELOPER_ERR);
+    }
 
-    cx_ecfp_init_private_key(CX_CURVE_Ed25519, keySeed, sizeof(keySeed), &pk);
+    if (cx_ecfp_init_private_key_no_throw(CX_CURVE_Ed25519, keySeed, 32, &pk) != CX_OK) {
+        THROW(SW_DEVELOPER_ERR);
+    }
     if (publicKey) {
-        cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, publicKey);
-        cx_ecfp_generate_pair(CX_CURVE_Ed25519, publicKey, &pk, 1);
+        if (cx_ecfp_init_public_key_no_throw(CX_CURVE_Ed25519, NULL, 0, publicKey) != CX_OK) {
+            THROW(SW_DEVELOPER_ERR);
+        }
+        if (cx_ecfp_generate_pair_no_throw(CX_CURVE_Ed25519, publicKey, &pk, 1) != CX_OK) {
+            THROW(SW_DEVELOPER_ERR);
+        }
     }
     if (privateKey) {
         *privateKey = pk;
@@ -40,7 +49,9 @@ void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKe
 void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
     cx_ecfp_private_key_t privateKey;
     deriveSiaKeypair(index, &privateKey, NULL);
-    cx_eddsa_sign(&privateKey, CX_RND_RFC6979 | CX_LAST, CX_SHA512, hash, 32, NULL, 0, dst, 64, NULL);
+    if (cx_eddsa_sign_no_throw(&privateKey, CX_SHA512, hash, 32, dst, 64) != CX_OK) {
+        THROW(SW_DEVELOPER_ERR);
+    }
     explicit_bzero(&privateKey, sizeof(privateKey));
 }
 
