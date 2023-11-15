@@ -304,7 +304,6 @@ static handler_fn_t *lookupHandler(uint8_t ins) {
 static void sia_main(void) {
     // Mark the transaction context as uninitialized.
     explicit_bzero(&global, sizeof(global));
-    global.calcTxnHashContext.initialized = false;
 
     volatile unsigned int rx = 0;
     volatile unsigned int tx = 0;
