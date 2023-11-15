@@ -142,7 +142,7 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
         pairs[1].value = ctx->fullStr[0];
 
         content->tagValueList.nbPairs = 2;
-        content->tagValueList.pairs = &pairs;
+        content->tagValueList.pairs = &pairs[0];
     } else {
         pairs[1].item = "Address";
         pairs[1].value = ctx->fullStr[0];
@@ -150,7 +150,7 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
         pairs[2].value = ctx->fullStr[1];
 
         content->tagValueList.nbPairs = 3;
-        content->tagValueList.pairs = &pairs;
+        content->tagValueList.pairs = &pairs[0];
     }
 
     content->title = NULL;
