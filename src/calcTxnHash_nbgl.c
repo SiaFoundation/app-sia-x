@@ -165,6 +165,10 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     return true;
 }
 
+static void zero_ctx(void) {
+    explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
+}
+
 // handleCalcTxnHash reads a signature index and a transaction, calculates the
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
@@ -174,18 +178,17 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         THROW(SW_INVALID_PARAM);
     }
 
-    const bool prev_initialized = ctx->initialized;
     if (p1 == P1_FIRST) {
         // If this is the first packet of a transaction, the transaction
         // context must not already be initialized. (Otherwise, an attacker
         // could fool the user by concatenating two transactions.)
         //
         // NOTE: ctx->initialized is set to false when the Sia app loads.
-        if (prev_initialized) {
+        if (ctx->initialized) {
+            zero_ctx();
             THROW(SW_IMPROPER_INIT);
         }
-        ctx->elementIndex = 0;
-        ctx->finished = false;
+        explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
         ctx->initialized = true;
 
         // If this is the first packet, it will include the key index, sig
@@ -209,7 +212,8 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
     } else {
         // If this is not P1_FIRST, the transaction must have been
         // initialized previously.
-        if (!prev_initialized) {
+        if (!ctx->initialized) {
+            zero_ctx();
             THROW(SW_IMPROPER_INIT);
         }
     }
@@ -217,15 +221,17 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
     // Add the new data to transaction decoder.
     txn_update(&ctx->txn, dataBuffer, dataLength);
 
-    *flags |= IO_ASYNCH_REPLY;
     switch (txn_parse(&ctx->txn)) {
         case TXN_STATE_ERR:
-            io_exchange_with_code(SW_INVALID_PARAM, 0);
+            // don't leave state lingering
+            zero_ctx();
+            THROW(SW_INVALID_PARAM);
             break;
         case TXN_STATE_PARTIAL:
-            io_exchange_with_code(SW_OK, 0);
+            THROW(SW_OK);
             break;
         case TXN_STATE_FINISHED:
+            *flags |= IO_ASYNCH_REPLY;
             nbgl_useCaseRegularReview(0, 0, "Cancel", NULL, nav_callback, confirm_callback);
             break;
     }

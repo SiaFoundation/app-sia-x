@@ -206,6 +206,10 @@ static void fmtTxnElem(void) {
     }
 }
 
+static void zero_ctx(void) {
+    explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
+}
+
 // handleCalcTxnHash reads a signature index and a transaction, calculates the
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
@@ -222,8 +226,10 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         //
         // NOTE: ctx->initialized is set to false when the Sia app loads.
         if (ctx->initialized) {
+            zero_ctx();
             THROW(SW_IMPROPER_INIT);
         }
+        zero_ctx();
         ctx->initialized = true;
 
         // If this is the first packet, it will include the key index, sig
@@ -248,6 +254,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         // If this is not P1_FIRST, the transaction must have been
         // initialized previously.
         if (!ctx->initialized) {
+            zero_ctx();
             THROW(SW_IMPROPER_INIT);
         }
     }
@@ -260,18 +267,17 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
     // there doesn't seem to be a clean way to avoid this duplication.
     switch (txn_parse(&ctx->txn)) {
         case TXN_STATE_ERR:
+            // don't leave state lingering
+            zero_ctx();
             THROW(SW_INVALID_PARAM);
             break;
         case TXN_STATE_PARTIAL:
             THROW(SW_OK);
             break;
         case TXN_STATE_FINISHED:
-            ctx->elemPart = 0;
-            fmtTxnElem();
             *flags |= IO_ASYNCH_REPLY;
+            fmtTxnElem();
             ux_flow_init(0, ux_show_txn_elem_flow, NULL);
-            // Reset the initialization state.
-            ctx->initialized = false;
             break;
     }
 
