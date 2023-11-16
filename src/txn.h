@@ -6,9 +6,9 @@
 #include "blake2b.h"
 
 #ifdef TARGET_NANOS
-#define MAX_ELEMS 6
+#define MAX_ELEMS 16
 #else
-#define MAX_ELEMS 64
+#define MAX_ELEMS 128
 #endif
 
 // macros for converting raw bytes to uint64_t
@@ -39,9 +39,8 @@ typedef enum {
 typedef struct {
     txnElemType_e elemType; // type of most-recently-seen element
 
-    uint8_t outVal[128];    // most-recently-seen currency value, in decimal
-    uint8_t valLen;         // length of outVal
-    uint8_t outAddr[77];    // most-recently-seen address
+    uint8_t outVal[24];    // most-recently-seen currency value, Sia-encoded
+    uint8_t outAddr[32];    // most-recently-seen address, Sia-encoded
 } txn_elem_t;
 
 // txn_state_t is a helper object for computing the SigHash of a streamed
@@ -76,5 +75,14 @@ void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);
 // encountered, it returns TXN_STATE_ERR. If the transaction has been fully
 // decoded, it returns TXN_STATE_FINISHED.
 txnDecoderState_e txn_parse(txn_state_t *txn);
+
+// txn takes the Sia-encoded address in src and converts it to a hex encoded
+// readable address in dst
+void format_address(char *dst, uint8_t *src);
+
+// cur2dec converts a Sia-encoded currency value to a decimal string and
+// appends a final NUL byte. It returns the length of the string. If the value
+// is too large, it throws TXN_STATE_ERR.
+int cur2dec(uint8_t *out, uint8_t *cur);
 
 #endif /* TXN_H */

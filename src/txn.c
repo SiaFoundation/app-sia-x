@@ -52,7 +52,7 @@ static uint64_t quorem10(uint64_t nat[], int len) {
 // cur2dec converts a Sia-encoded currency value to a decimal string and
 // appends a final NUL byte. It returns the length of the string. If the value
 // is too large, it throws TXN_STATE_ERR.
-static int cur2dec(uint8_t *out, uint8_t *cur) {
+int cur2dec(uint8_t *out, uint8_t *cur) {
     if (cur[0] == 0) {
         out[0] = '\0';
         return 0;
@@ -137,7 +137,7 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
     uint64_t valLen = readInt(txn);
     need_at_least(txn, valLen);
     if (outVal) {
-        txn->elements[txn->elementIndex].valLen = cur2dec(outVal, txn->buf + txn->pos - 8);
+        memmove(outVal, txn->buf + txn->pos - 8, 8 + valLen);
     }
     seek(txn, valLen);
 }
@@ -145,10 +145,7 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
 static void readHash(txn_state_t *txn, char *outAddr) {
     need_at_least(txn, 32);
     if (outAddr) {
-        bin2hex(outAddr, txn->buf + txn->pos, 32);
-        uint8_t checksum[6];
-        blake2b(checksum, sizeof(checksum), txn->buf + txn->pos, 32);
-        bin2hex(outAddr + 64, checksum, sizeof(checksum));
+        memmove(outAddr, txn->buf + txn->pos, 32);
     }
     seek(txn, 32);
 }
@@ -355,4 +352,11 @@ void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen) {
     // reset the seek position; if we previously threw TXN_STATE_PARTIAL, now
     // we can try decoding again from the beginning.
     txn->pos = 0;
+}
+
+void format_address(char *dst, uint8_t *src) {
+    bin2hex(dst, src, 32);
+    uint8_t checksum[6];
+    blake2b(checksum, sizeof(checksum), src, 32);
+    bin2hex(dst + 64, checksum, sizeof(checksum));
 }

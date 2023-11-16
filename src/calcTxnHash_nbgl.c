@@ -41,33 +41,37 @@ static void fmtTxnElem(void) {
     txn_state_t *txn = &ctx->txn;
 
     switch (txn->elements[ctx->elementIndex].elemType) {
-        case TXN_ELEM_SC_OUTPUT:
+        case TXN_ELEM_SC_OUTPUT: {
             memmove(ctx->labelStr, "SC Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             // An element can have multiple screens. For each siacoin output, the
             // user needs to see both the destination address and the amount.
             // These are rendered in separate screens, and elemPart is used to
             // identify which screen is being viewed.
-            memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr, sizeof(txn->elements[ctx->elementIndex].outAddr));
-            memmove(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
-            formatSC(ctx->fullStr[1], txn->elements[ctx->elementIndex].valLen);
+            format_address(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr);
+            const uint8_t valLen = cur2dec(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal);
+            formatSC(ctx->fullStr[1], valLen);
             break;
+        }
 
-        case TXN_ELEM_SF_OUTPUT:
+        case TXN_ELEM_SF_OUTPUT: {
             memmove(ctx->labelStr, "SF Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
-            memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr, sizeof(txn->elements[ctx->elementIndex].outAddr));
-            memmove(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
-            memmove(ctx->fullStr[1] + txn->elements[ctx->elementIndex].valLen, " SF", 4);
+            format_address(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr);
+            const uint8_t valLen = cur2dec(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal);
+            formatSC(ctx->fullStr[1], valLen);
             break;
+        }
 
-        case TXN_ELEM_MINER_FEE:
+        case TXN_ELEM_MINER_FEE: {
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
-            memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
-            formatSC(ctx->fullStr[0], txn->elements[ctx->elementIndex].valLen);
+
+            const uint8_t valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
+            formatSC(ctx->fullStr[0], valLen);
             break;
+        }
 
         default:
             // This should never happen.
