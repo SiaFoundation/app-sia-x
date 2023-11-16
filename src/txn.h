@@ -83,6 +83,6 @@ void format_address(char *dst, uint8_t *src);
 // cur2dec converts a Sia-encoded currency value to a decimal string and
 // appends a final NUL byte. It returns the length of the string. If the value
 // is too large, it throws TXN_STATE_ERR.
-int cur2dec(uint8_t *out, uint8_t *cur);
+int cur2dec(char *out, uint8_t *cur);
 
 #endif /* TXN_H */

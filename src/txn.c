@@ -52,7 +52,7 @@ static uint64_t quorem10(uint64_t nat[], int len) {
 // cur2dec converts a Sia-encoded currency value to a decimal string and
 // appends a final NUL byte. It returns the length of the string. If the value
 // is too large, it throws TXN_STATE_ERR.
-int cur2dec(uint8_t *out, uint8_t *cur) {
+int cur2dec(char *out, uint8_t *cur) {
     if (cur[0] == 0) {
         out[0] = '\0';
         return 0;
