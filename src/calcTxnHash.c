@@ -161,11 +161,11 @@ static void fmtTxnElem(void) {
             // These are rendered in separate screens, and elemPart is used to
             // identify which screen is being viewed.
             if (ctx->elemPart == 0) {
-                memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr, sizeof(txn->elements[ctx->elementIndex].outAddr));
+                format_address(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr);
                 ctx->elemPart++;
             } else {
-                memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
-                formatSC(ctx->fullStr[0], txn->elements[ctx->elementIndex].valLen);
+                const uint8_t valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
+                formatSC(ctx->fullStr[0], valLen);
                 ctx->elemPart = 0;
 
                 ctx->elementIndex++;
@@ -176,11 +176,11 @@ static void fmtTxnElem(void) {
             memmove(ctx->labelStr, "SF Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             if (ctx->elemPart == 0) {
-                memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr, sizeof(txn->elements[ctx->elementIndex].outAddr));
+                format_address(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr);
                 ctx->elemPart++;
             } else {
-                memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
-                memmove(ctx->fullStr[0] + txn->elements[ctx->elementIndex].valLen, " SF", 4);
+                const uint8_t valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
+                memmove(ctx->fullStr[0] + valLen, " SF", 4);
                 ctx->elemPart = 0;
 
                 ctx->elementIndex++;
@@ -191,8 +191,10 @@ static void fmtTxnElem(void) {
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
-            memmove(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal, sizeof(txn->elements[ctx->elementIndex].outVal));
-            formatSC(ctx->fullStr[0], txn->elements[ctx->elementIndex].valLen);
+
+            const uint8_t valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
+            formatSC(ctx->fullStr[0], valLen);
+
             ctx->elemPart = 0;
             ctx->elementIndex++;
             break;
