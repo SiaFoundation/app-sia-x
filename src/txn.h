@@ -37,10 +37,10 @@ typedef enum {
 } txnElemType_e;
 
 typedef struct {
-    txnElemType_e elemType; // type of most-recently-seen element
+    uint8_t elemType; // type of element (txnElemType_e)
 
-    uint8_t outVal[24];    // most-recently-seen currency value, Sia-encoded
-    uint8_t outAddr[32];    // most-recently-seen address, Sia-encoded
+    uint8_t outVal[24];    // currency value, Sia-encoded
+    uint8_t outAddr[32];    // address, Sia-encoded
 } txn_elem_t;
 
 // txn_state_t is a helper object for computing the SigHash of a streamed
