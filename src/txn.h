@@ -6,7 +6,7 @@
 #include "blake2b.h"
 
 #ifdef TARGET_NANOS
-#define MAX_ELEMS 16
+#define MAX_ELEMS 20
 #else
 #define MAX_ELEMS 128
 #endif
@@ -39,7 +39,7 @@ typedef enum {
 typedef struct {
     uint8_t elemType; // type of element (txnElemType_e)
 
-    uint8_t outVal[24];    // currency value, Sia-encoded
+    uint8_t outVal[1 + 16];    // currency value, Sia-encoded
     uint8_t outAddr[32];    // address, Sia-encoded
 } txn_elem_t;
 
