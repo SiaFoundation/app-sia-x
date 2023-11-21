@@ -73,9 +73,17 @@ int cur2dec(char *out, uint8_t *cur) {
     // has only 1 non-zero byte, which should be enforced elsewhere.
     uint64_t nat[32];
     int len = (cur[0] / 8) + ((cur[0] % 8) != 0);
-    cur += 8 - (len * 8 - cur[0]);
-    for (int i = 0; i < len; i++) {
-        nat[len - i - 1] = U8BE(cur, i * 8);
+    const int zeros = (len * 8 - cur[0]);
+    cur += 1;
+
+    nat[len - 1] = 0;
+    for (int i = 0; i < 8 - zeros; i++) {
+        nat[len - 1] <<= 8;
+        nat[len - 1] |= cur[i];
+    }
+    cur += 8 - zeros;
+    for (int i = 1; i < len; i++) {
+        nat[len - i - 1] = U8BE(cur, (i - 1) * 8);
     }
 
     // decode digits into buf, right-to-left
@@ -137,7 +145,11 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
     uint64_t valLen = readInt(txn);
     need_at_least(txn, valLen);
     if (outVal) {
-        memmove(outVal, txn->buf + txn->pos - 8, 8 + valLen);
+        if (valLen > 16) {
+            THROW(TXN_STATE_ERR);
+        }
+        outVal[0] = valLen;
+        memmove(outVal + 1, txn->buf + txn->pos, valLen);
     }
     seek(txn, valLen);
 }
