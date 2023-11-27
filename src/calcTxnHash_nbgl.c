@@ -58,8 +58,7 @@ static void fmtTxnElem(void) {
             memmove(ctx->labelStr, "SF Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             format_address(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr);
-            const uint8_t valLen = cur2dec(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal);
-            formatSC(ctx->fullStr[1], valLen);
+            cur2dec(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal);
             break;
         }
 
