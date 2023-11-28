@@ -52,7 +52,7 @@ static uint64_t quorem10(uint64_t nat[], int len) {
 // cur2dec converts a Sia-encoded currency value to a decimal string and
 // appends a final NUL byte. It returns the length of the string. If the value
 // is too large, it throws TXN_STATE_ERR.
-static int cur2dec(uint8_t *out, uint8_t *cur) {
+int cur2dec(char *out, uint8_t *cur) {
     if (cur[0] == 0) {
         out[0] = '\0';
         return 0;
@@ -73,9 +73,17 @@ static int cur2dec(uint8_t *out, uint8_t *cur) {
     // has only 1 non-zero byte, which should be enforced elsewhere.
     uint64_t nat[32];
     int len = (cur[0] / 8) + ((cur[0] % 8) != 0);
-    cur += 8 - (len * 8 - cur[0]);
-    for (int i = 0; i < len; i++) {
-        nat[len - i - 1] = U8BE(cur, i * 8);
+    const int zeros = (len * 8 - cur[0]);
+    cur += 1;
+
+    nat[len - 1] = 0;
+    for (int i = 0; i < 8 - zeros; i++) {
+        nat[len - 1] <<= 8;
+        nat[len - 1] |= cur[i];
+    }
+    cur += 8 - zeros;
+    for (int i = 1; i < len; i++) {
+        nat[len - i - 1] = U8BE(cur, (i - 1) * 8);
     }
 
     // decode digits into buf, right-to-left
@@ -114,7 +122,7 @@ static void seek(txn_state_t *txn, uint64_t n) {
 
 static void advance(txn_state_t *txn) {
     // if elem is covered, add it to the hash
-    if (txn->elemType != TXN_ELEM_TXN_SIG) {
+    if (txn->elements[txn->elementIndex].elemType != TXN_ELEM_TXN_SIG) {
         blake2b_update(&txn->blake, txn->buf, txn->pos);
     } else if (txn->sliceIndex == txn->sigIndex && txn->pos >= 48) {
         // add just the ParentID, Timelock, and PublicKeyIndex
@@ -137,7 +145,11 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
     uint64_t valLen = readInt(txn);
     need_at_least(txn, valLen);
     if (outVal) {
-        txn->valLen = cur2dec(outVal, txn->buf + txn->pos - 8);
+        if (valLen > 16) {
+            THROW(TXN_STATE_ERR);
+        }
+        outVal[0] = valLen;
+        memmove(outVal + 1, txn->buf + txn->pos, valLen);
     }
     seek(txn, valLen);
 }
@@ -145,10 +157,7 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
 static void readHash(txn_state_t *txn, char *outAddr) {
     need_at_least(txn, 32);
     if (outAddr) {
-        bin2hex(outAddr, txn->buf + txn->pos, 32);
-        uint8_t checksum[6];
-        blake2b(checksum, sizeof(checksum), txn->buf + txn->pos, 32);
-        bin2hex(outAddr + 64, checksum, sizeof(checksum));
+        memmove(outAddr, txn->buf + txn->pos, 32);
     }
     seek(txn, 32);
 }
@@ -193,56 +202,67 @@ static void addReplayProtection(cx_blake2b_t *S) {
 
 // throws txnDecoderState_e
 static void __txn_next_elem(txn_state_t *txn) {
+    // too many elements
+    if (txn->elementIndex == MAX_ELEMS) {
+        THROW(TXN_STATE_ERR);
+    }
     // if we're on a slice boundary, read the next length prefix and bump the
     // element type
     while (txn->sliceIndex == txn->sliceLen) {
-        if (txn->elemType == TXN_ELEM_TXN_SIG) {
+        if (txn->elements[txn->elementIndex].elemType == TXN_ELEM_TXN_SIG) {
             // store final hash
             blake2b_final(&txn->blake, txn->sigHash, sizeof(txn->sigHash));
             THROW(TXN_STATE_FINISHED);
         }
+        // too many elements
         txn->sliceLen = readInt(txn);
         txn->sliceIndex = 0;
-        txn->displayIndex = 0;
-        txn->elemType++;
+        txn->elements[txn->elementIndex].elemType++;
         advance(txn);
 
         // if we've reached the TransactionSignatures, check that sigIndex is
         // a valid index
-        if ((txn->elemType == TXN_ELEM_TXN_SIG) && (txn->sigIndex >= txn->sliceLen)) {
+        if ((txn->elements[txn->elementIndex].elemType == TXN_ELEM_TXN_SIG) && (txn->sigIndex >= txn->sliceLen)) {
             THROW(TXN_STATE_ERR);
         }
     }
 
-    switch (txn->elemType) {
+    switch (txn->elements[txn->elementIndex].elemType) {
         // these elements should be displayed
         case TXN_ELEM_SC_OUTPUT:
-            readCurrency(txn, txn->outVal);       // Value
-            readHash(txn, (char *)txn->outAddr);  // UnlockHash
+            readCurrency(txn, txn->elements[txn->elementIndex].outVal);       // Value
+            readHash(txn, (char *)txn->elements[txn->elementIndex].outAddr);  // UnlockHash
             advance(txn);
-            txn->sliceIndex++;
-            if (!memcmp(txn->outAddr, txn->changeAddr, sizeof(txn->outAddr))) {
+            if (!memcmp(txn->elements[txn->elementIndex].outAddr, txn->changeAddr, sizeof(txn->elements[txn->elementIndex].outAddr))) {
                 // do not display the change address or increment displayIndex
                 return;
             }
-            txn->displayIndex++;
-            THROW(TXN_STATE_READY);
+
+            txn->sliceIndex++;
+            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elementIndex++;
+            return;
 
         case TXN_ELEM_SF_OUTPUT:
-            readCurrency(txn, txn->outVal);       // Value
-            readHash(txn, (char *)txn->outAddr);  // UnlockHash
-            readCurrency(txn, NULL);              // ClaimStart
+            readCurrency(txn, txn->elements[txn->elementIndex].outVal);       // Value
+            readHash(txn, (char *)txn->elements[txn->elementIndex].outAddr);  // UnlockHash
+            readCurrency(txn, NULL);                                          // ClaimStart
             advance(txn);
+
             txn->sliceIndex++;
-            txn->displayIndex++;
-            THROW(TXN_STATE_READY);
+            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elementIndex++;
+            return;
 
         case TXN_ELEM_MINER_FEE:
-            readCurrency(txn, txn->outVal);  // Value
-            memmove(txn->outAddr, "[Miner Fee]", 12);
+            readCurrency(txn, txn->elements[txn->elementIndex].outVal);  // Value
+            memmove(txn->elements[txn->elementIndex].outAddr, "[Miner Fee]", 12);
             advance(txn);
+
             txn->sliceIndex++;
-            THROW(TXN_STATE_READY);
+            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elementIndex++;
+            return;
 
         // these elements should be decoded, but not displayed
         case TXN_ELEM_SC_INPUT:
@@ -284,7 +304,7 @@ static void __txn_next_elem(txn_state_t *txn) {
     }
 }
 
-txnDecoderState_e txn_next_elem(txn_state_t *txn) {
+txnDecoderState_e txn_parse(txn_state_t *txn) {
     // Like many transaction decoders, we use exceptions to jump out of deep
     // call stacks when we encounter an error. There are two important rules
     // for Ledger exceptions: declare modified variables as volatile, and do
@@ -317,9 +337,10 @@ txnDecoderState_e txn_next_elem(txn_state_t *txn) {
 
 void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
     memset(txn, 0, sizeof(txn_state_t));
-    txn->buflen = txn->pos = txn->sliceIndex = txn->displayIndex = txn->sliceLen = txn->valLen = 0;
-    txn->elemType = -1;  // first increment brings it to SC_INPUT
     txn->sigIndex = sigIndex;
+
+    txn->elementIndex = 0;
+    txn->elements[txn->elementIndex].elemType = -1;  // first increment brings it to SC_INPUT
 
     cx_ecfp_public_key_t publicKey = {0};
     deriveSiaKeypair(changeIndex, NULL, &publicKey);
@@ -343,4 +364,11 @@ void txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen) {
     // reset the seek position; if we previously threw TXN_STATE_PARTIAL, now
     // we can try decoding again from the beginning.
     txn->pos = 0;
+}
+
+void format_address(char *dst, uint8_t *src) {
+    bin2hex(dst, src, 32);
+    uint8_t checksum[6];
+    blake2b(checksum, sizeof(checksum), src, 32);
+    bin2hex(dst + 64, checksum, sizeof(checksum));
 }
