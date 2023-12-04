@@ -167,6 +167,14 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     return true;
 }
 
+static void begin_review(void) {
+    nbgl_useCaseRegularReview(0, ctx->txn.elementIndex + 1, "Cancel", NULL, nav_callback, confirm_callback);
+}
+
+static void cancel_review(void) {
+    confirm_callback(false);
+}
+
 static void zero_ctx(void) {
     explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
 }
@@ -234,7 +242,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
             break;
         case TXN_STATE_FINISHED:
             *flags |= IO_ASYNCH_REPLY;
-            nbgl_useCaseRegularReview(0, 0, "Cancel", NULL, nav_callback, confirm_callback);
+            nbgl_useCaseReviewStart(&C_stax_app_sia, (ctx->sign) ? "Sign Transaction" : "Hash Transaction", NULL, "Cancel", begin_review, cancel_review);
             break;
     }
 }
