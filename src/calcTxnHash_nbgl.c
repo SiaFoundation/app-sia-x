@@ -106,7 +106,6 @@ static void confirm_callback(bool confirm) {
 static nbgl_layoutTagValue_t pairs[3];
 
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
-    UNUSED(page);
     ctx->elementIndex = page;
     if (ctx->elementIndex >= ctx->txn.elementIndex) {
         const bool wasFinished = ctx->finished;
