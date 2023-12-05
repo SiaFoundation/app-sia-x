@@ -93,12 +93,12 @@ static void confirm_callback(bool confirm) {
             io_exchange_with_code(SW_OK, 64);
             nbgl_useCaseStatus("TRANSACTION SIGNED", true, ui_idle);
         } else {
-            nbgl_useCaseStatus("CONFIRMED HASH", true, ui_idle);
+            memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
+            io_exchange_with_code(SW_OK, 32);
+            nbgl_useCaseStatus("TRANSACTION HASHED", true, ui_idle);
         }
     } else {
-        if (!(!ctx->sign && finished)) {
-            io_exchange_with_code(SW_USER_REJECTED, 0);
-        }
+        io_exchange_with_code(SW_USER_REJECTED, 0);
         nbgl_useCaseStatus("Transaction Rejected", false, ui_idle);
     }
 }
@@ -108,9 +108,6 @@ static nbgl_layoutTagValue_t pairs[3];
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     ctx->elementIndex = page;
     if (ctx->elementIndex >= ctx->txn.elementIndex) {
-        const bool wasFinished = ctx->finished;
-        ctx->finished = true;
-
         content->type = INFO_LONG_PRESS;
         content->infoLongPress.icon = &C_stax_app_sia;
         if (ctx->sign) {
@@ -121,15 +118,11 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
             content->infoLongPress.text = "Sign Transaction";
             content->infoLongPress.longPressText = ctx->fullStr[0];
         } else {
-            memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
             // prevent this from being sent twice and causing device to hang
-            if (!wasFinished) {
-                io_exchange_with_code(SW_OK, 32);
-            }
-            bin2hex(ctx->fullStr[0], ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
+            // bin2hex(ctx->fullStr[0], ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
 
-            content->infoLongPress.text = ctx->fullStr[0];
-            content->infoLongPress.longPressText = "Confirm Hash";
+            content->infoLongPress.text = "Hash Transaction";
+            content->infoLongPress.longPressText = "Confirm";
         }
         return true;
     }
