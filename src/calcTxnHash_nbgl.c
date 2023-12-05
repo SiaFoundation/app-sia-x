@@ -81,9 +81,6 @@ static void fmtTxnElem(void) {
 }
 
 static void confirm_callback(bool confirm) {
-    // The final page of hashing doesn't need to send reject because at that
-    // point, the client has already received the hash.
-    const bool finished = ctx->finished;
     ctx->finished = false;
     ctx->initialized = false;
 
