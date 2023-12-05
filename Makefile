@@ -38,10 +38,10 @@ APP_SOURCE_PATH += src
 
 # Application icons following guidelines:
 # https://developers.ledger.com/docs/embedded-app/design-requirements/#device-icon
-ICON_NANOS = icons/nanos_app_sia.gif
-ICON_NANOX = icons/nanox_app_sia.gif
-ICON_NANOSP = icons/nanos2_app_sia.gif
-ICON_STAX = icons/stax_app_sia.gif
+ICON_NANOS = nanos_app_sia.gif
+ICON_NANOX = nanox_app_sia.gif
+ICON_NANOSP = nanos2_app_sia.gif
+ICON_STAX = stax_app_sia.gif
 
 # Application allowed derivation curves.
 # Possibles curves are: secp256k1, secp256r1, ed25519 and bls12381g1
@@ -65,7 +65,7 @@ PATH_APP_LOAD_PARAMS = "44'/93'"
 #   * It must at least contains one value.
 #   * Values can be the app ticker or anything else but should be unique.
 VARIANT_PARAM = COIN
-VARIANT_VALUES = BOL
+VARIANT_VALUES = sia
 
 # Enabling DEBUG flag will enable PRINTF and disable optimizations
 #DEBUG = 1
