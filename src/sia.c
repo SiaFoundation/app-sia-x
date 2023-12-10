@@ -1,6 +1,7 @@
 #include "sia.h"
 
 #include <cx.h>
+#include <lib_standard_app/crypto_helpers.h>
 #include <os.h>
 #include <os_seed.h>
 #include <stdbool.h>
@@ -9,31 +10,33 @@
 
 #include "blake2b.h"
 
+static void siaSetPath(uint32_t index, uint32_t path[static 5]) {
+    path[0] = 44 | 0x80000000;
+    path[1] = 93 | 0x80000000;
+    path[2] = index | 0x80000000;
+    path[3] = 0x80000000;
+    path[4] = 0x80000000;
+}
+
 void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey) {
-    uint8_t keySeed[64];
     cx_ecfp_private_key_t pk;
 
+    uint32_t bip32Path[5];
+    siaSetPath(index, bip32Path);
+
     // bip32 path for 44'/93'/n'/0'/0'
-    uint32_t bip32Path[] = {44 | 0x80000000, 93 | 0x80000000, index | 0x80000000, 0x80000000, 0x80000000};
-    if (os_derive_bip32_with_seed_no_throw(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, keySeed, NULL, NULL, 0)) {
+    if (bip32_derive_with_seed_init_privkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, &pk, NULL, NULL, 0) != CX_OK) {
         THROW(SW_DEVELOPER_ERR);
     }
 
-    if (cx_ecfp_init_private_key_no_throw(CX_CURVE_Ed25519, keySeed, 32, &pk) != CX_OK) {
-        THROW(SW_DEVELOPER_ERR);
-    }
     if (publicKey) {
-        if (cx_ecfp_init_public_key_no_throw(CX_CURVE_Ed25519, NULL, 0, publicKey) != CX_OK) {
-            THROW(SW_DEVELOPER_ERR);
-        }
-        if (cx_ecfp_generate_pair_no_throw(CX_CURVE_Ed25519, publicKey, &pk, 1) != CX_OK) {
+        if (bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, publicKey->W, NULL, CX_SHA512, NULL, 0) != CX_OK) {
             THROW(SW_DEVELOPER_ERR);
         }
     }
     if (privateKey) {
         *privateKey = pk;
     }
-    explicit_bzero(keySeed, sizeof(keySeed));
     explicit_bzero(&pk, sizeof(pk));
 }
 
@@ -47,12 +50,19 @@ void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKe
 }
 
 void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
-    cx_ecfp_private_key_t privateKey;
-    deriveSiaKeypair(index, &privateKey, NULL);
-    if (cx_eddsa_sign_no_throw(&privateKey, CX_SHA512, hash, 32, dst, 64) != CX_OK) {
+    // cx_ecfp_private_key_t privateKey;
+    // deriveSiaKeypair(index, &privateKey, NULL);
+    // if (cx_eddsa_sign_no_throw(&privateKey, CX_SHA512, hash, 32, dst, 64) != CX_OK) {
+    //     THROW(SW_DEVELOPER_ERR);
+    // }
+
+    uint32_t bip32Path[5];
+    siaSetPath(index, bip32Path);
+
+    size_t signatureLength = 64;
+    if (bip32_derive_with_seed_eddsa_sign_hash_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, CX_SHA512, hash, 32, dst, &signatureLength, NULL, 0) != CX_OK) {
         THROW(SW_DEVELOPER_ERR);
     }
-    explicit_bzero(&privateKey, sizeof(privateKey));
 }
 
 void bin2hex(char *dst, const uint8_t *data, uint64_t inlen) {
