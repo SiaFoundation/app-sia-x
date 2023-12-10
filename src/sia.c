@@ -50,12 +50,6 @@ void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKe
 }
 
 void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
-    // cx_ecfp_private_key_t privateKey;
-    // deriveSiaKeypair(index, &privateKey, NULL);
-    // if (cx_eddsa_sign_no_throw(&privateKey, CX_SHA512, hash, 32, dst, 64) != CX_OK) {
-    //     THROW(SW_DEVELOPER_ERR);
-    // }
-
     uint32_t bip32Path[5];
     siaSetPath(index, bip32Path);
 
