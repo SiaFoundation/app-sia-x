@@ -121,7 +121,7 @@ static unsigned int io_seproxyhal_touch_pk_ok(void) {
     // variable is named 'tx'.
     uint8_t tx = 0;
 
-    deriveSiaKeypair(ctx->keyIndex, NULL, &publicKey);
+    deriveSiaPublicKey(ctx->keyIndex, publicKey.W);
     extractPubkeyBytes(G_io_apdu_buffer + tx, &publicKey);
     tx += 32;
     pubkeyToSiaAddress((char*)G_io_apdu_buffer + tx, &publicKey);

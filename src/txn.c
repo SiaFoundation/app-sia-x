@@ -343,7 +343,7 @@ void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
     txn->elements[txn->elementIndex].elemType = -1;  // first increment brings it to SC_INPUT
 
     cx_ecfp_public_key_t publicKey = {0};
-    deriveSiaKeypair(changeIndex, NULL, &publicKey);
+    deriveSiaPublicKey(changeIndex, publicKey.W);
     pubkeyToSiaAddress((char *)&txn->changeAddr, &publicKey);
 
     // initialize hash state

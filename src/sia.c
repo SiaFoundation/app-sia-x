@@ -18,26 +18,15 @@ static void siaSetPath(uint32_t index, uint32_t path[static 5]) {
     path[4] = 0x80000000;
 }
 
-void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey) {
-    cx_ecfp_private_key_t pk;
-
+void deriveSiaPublicKey(uint32_t index, uint8_t raw_pubkey[static 64]) {
     uint32_t bip32Path[5];
     siaSetPath(index, bip32Path);
 
-    // bip32 path for 44'/93'/n'/0'/0'
-    if (bip32_derive_with_seed_init_privkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, &pk, NULL, NULL, 0) != CX_OK) {
-        THROW(SW_DEVELOPER_ERR);
-    }
-
-    if (publicKey) {
-        if (bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, publicKey->W, NULL, CX_SHA512, NULL, 0) != CX_OK) {
+    if (raw_pubkey) {
+        if (bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, raw_pubkey, NULL, CX_SHA512, NULL, 0) != CX_OK) {
             THROW(SW_DEVELOPER_ERR);
         }
     }
-    if (privateKey) {
-        *privateKey = pk;
-    }
-    explicit_bzero(&pk, sizeof(pk));
 }
 
 void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKey) {
