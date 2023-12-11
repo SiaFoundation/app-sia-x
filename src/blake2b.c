@@ -1,5 +1,6 @@
 #include "blake2b.h"
 
+#include <ledger_assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -7,20 +8,23 @@
 
 void blake2b_init(cx_blake2b_t *S) {
     if (cx_blake2b_init_no_throw(S, 256) != CX_OK) {
-        THROW(SW_DEVELOPER_ERR);
+        ASSERT_DISPLAY_MESSAGE("blake2b_init failed");
+        return;
     }
 }
 
 void blake2b_update(cx_blake2b_t *S, const uint8_t *in, uint64_t inlen) {
     if (cx_hash_no_throw((cx_hash_t *)S, 0, in, inlen, NULL, 0) != CX_OK) {
-        THROW(SW_DEVELOPER_ERR);
+        ASSERT_DISPLAY_MESSAGE("blake2b_update failed");
+        return;
     }
 }
 
 void blake2b_final(cx_blake2b_t *S, uint8_t *out, uint64_t outlen) {
     uint8_t buf[32];
     if (cx_hash_no_throw((cx_hash_t *)S, CX_LAST, NULL, 0, buf, sizeof(buf)) != CX_OK) {
-        THROW(SW_DEVELOPER_ERR);
+        ASSERT_DISPLAY_MESSAGE("blake2b_final failed");
+        return;
     }
     memmove(out, buf, outlen);
 }

@@ -1,6 +1,7 @@
 #include "sia.h"
 
 #include <cx.h>
+#include <ledger_assert.h>
 #include <lib_standard_app/crypto_helpers.h>
 #include <os.h>
 #include <os_seed.h>
@@ -24,7 +25,8 @@ void deriveSiaPublicKey(uint32_t index, uint8_t raw_pubkey[static 64]) {
 
     if (raw_pubkey) {
         if (bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, raw_pubkey, NULL, CX_SHA512, NULL, 0) != CX_OK) {
-            THROW(SW_DEVELOPER_ERR);
+            ASSERT_DISPLAY_MESSAGE("get pubkey failed");
+            return;
         }
     }
 }
@@ -44,7 +46,8 @@ void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
 
     size_t signatureLength = 64;
     if (bip32_derive_with_seed_eddsa_sign_hash_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, CX_SHA512, hash, 32, dst, &signatureLength, NULL, 0) != CX_OK) {
-        THROW(SW_DEVELOPER_ERR);
+        ASSERT_DISPLAY_MESSAGE("signing txn failed");
+        return;
     }
 }
 
