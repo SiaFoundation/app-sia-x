@@ -36,9 +36,9 @@ void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKe
 // pubkeyToSiaAddress converts a Ledger pubkey to a Sia wallet address.
 void pubkeyToSiaAddress(char *dst, const cx_ecfp_public_key_t *publicKey);
 
-// deriveSiaKeypair derives an Ed25519 key pair from an index and the Ledger
-// seed. Either privateKey or publicKey may be NULL.
-void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey);
+// deriveSiaPublicKey derives an Ed25519 public key from an index and the
+// Ledger seed.
+void deriveSiaPublicKey(uint32_t index, uint8_t raw_pubkey[static 64]);
 
 // deriveAndSign derives an Ed25519 private key from an index and the
 // Ledger seed, and uses it to produce a 64-byte signature of the provided
