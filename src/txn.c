@@ -342,9 +342,9 @@ void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
     txn->elementIndex = 0;
     txn->elements[txn->elementIndex].elemType = -1;  // first increment brings it to SC_INPUT
 
-    cx_ecfp_public_key_t publicKey = {0};
-    deriveSiaPublicKey(changeIndex, publicKey.W);
-    pubkeyToSiaAddress((char *)&txn->changeAddr, &publicKey);
+    uint8_t publicKey[65] = {0};
+    deriveSiaPublicKey(changeIndex, publicKey);
+    pubkeyToSiaAddress((char *)&txn->changeAddr, publicKey);
 
     // initialize hash state
     blake2b_init(&txn->blake);
