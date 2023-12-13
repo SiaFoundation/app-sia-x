@@ -114,17 +114,17 @@ static void continue_review(void) {
 #endif
 
 static unsigned int io_seproxyhal_touch_pk_ok(void) {
-    cx_ecfp_public_key_t publicKey = {0};
+    uint8_t publicKey[65] = {0};
 
     // The response APDU will contain multiple objects, which means we need to
     // remember our offset within G_io_apdu_buffer. By convention, the offset
     // variable is named 'tx'.
     uint8_t tx = 0;
 
-    deriveSiaPublicKey(ctx->keyIndex, publicKey.W);
-    extractPubkeyBytes(G_io_apdu_buffer + tx, &publicKey);
+    deriveSiaPublicKey(ctx->keyIndex, publicKey);
+    extractPubkeyBytes(G_io_apdu_buffer + tx, publicKey);
     tx += 32;
-    pubkeyToSiaAddress((char*)G_io_apdu_buffer + tx, &publicKey);
+    pubkeyToSiaAddress((char*)G_io_apdu_buffer + tx, publicKey);
     tx += 76;
 
     // Flush the APDU buffer, sending the response.

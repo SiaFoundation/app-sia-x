@@ -19,23 +19,18 @@ static void siaSetPath(uint32_t index, uint32_t path[static 5]) {
     path[4] = 0x80000000;
 }
 
-void deriveSiaPublicKey(uint32_t index, uint8_t raw_pubkey[static 64]) {
+void deriveSiaPublicKey(uint32_t index, uint8_t publicKey[static 65]) {
     uint32_t bip32Path[5];
     siaSetPath(index, bip32Path);
 
-    if (raw_pubkey) {
-        if (bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, raw_pubkey, NULL, CX_SHA512, NULL, 0) != CX_OK) {
-            ASSERT_DISPLAY_MESSAGE("get pubkey failed");
-            return;
-        }
-    }
+    LEDGER_ASSERT(CX_OK == bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, publicKey, NULL, CX_SHA512, NULL, 0), "get pubkey failed");
 }
 
-void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKey) {
+void extractPubkeyBytes(unsigned char *dst, const uint8_t publicKey[static 65]) {
     for (int i = 0; i < 32; i++) {
-        dst[i] = publicKey->W[64 - i];
+        dst[i] = publicKey[64 - i];
     }
-    if (publicKey->W[32] & 1) {
+    if (publicKey[32] & 1) {
         dst[31] |= 0x80;
     }
 }
@@ -45,10 +40,7 @@ void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
     siaSetPath(index, bip32Path);
 
     size_t signatureLength = 64;
-    if (bip32_derive_with_seed_eddsa_sign_hash_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, CX_SHA512, hash, 32, dst, &signatureLength, NULL, 0) != CX_OK) {
-        ASSERT_DISPLAY_MESSAGE("signing txn failed");
-        return;
-    }
+    LEDGER_ASSERT(CX_OK == bip32_derive_with_seed_eddsa_sign_hash_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, CX_SHA512, hash, 32, dst, &signatureLength, NULL, 0), "signing txn failed");
 }
 
 void bin2hex(char *dst, const uint8_t *data, uint64_t inlen) {
@@ -60,7 +52,7 @@ void bin2hex(char *dst, const uint8_t *data, uint64_t inlen) {
     dst[2 * inlen] = '\0';
 }
 
-void pubkeyToSiaAddress(char *dst, const cx_ecfp_public_key_t *publicKey) {
+void pubkeyToSiaAddress(char *dst, const uint8_t publicKey[static 65]) {
     // A Sia address is the Merkle root of a set of unlock conditions.
     // For a "standard" address, the unlock conditions are:
     //
