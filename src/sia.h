@@ -31,14 +31,14 @@ int formatSC(char *buf, uint8_t decLen);
 
 // extractPubkeyBytes converts a Ledger-style public key to a Sia-friendly
 // 32-byte array.
-void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKey);
+void extractPubkeyBytes(unsigned char *dst, const uint8_t publicKey[static 65]);
 
 // pubkeyToSiaAddress converts a Ledger pubkey to a Sia wallet address.
-void pubkeyToSiaAddress(char *dst, const cx_ecfp_public_key_t *publicKey);
+void pubkeyToSiaAddress(char *dst, const uint8_t publicKey[static 65]);
 
 // deriveSiaPublicKey derives an Ed25519 public key from an index and the
 // Ledger seed.
-void deriveSiaPublicKey(uint32_t index, uint8_t raw_pubkey[static 64]);
+void deriveSiaPublicKey(uint32_t index, uint8_t publicKey[static 64]);
 
 // deriveAndSign derives an Ed25519 private key from an index and the
 // Ledger seed, and uses it to produce a 64-byte signature of the provided
