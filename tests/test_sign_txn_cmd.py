@@ -19,65 +19,96 @@ test_transaction = bytes.fromhex(
     "01000000000000001ac932c4066849910b71cea45d41bd369c5a0ec0d1fb402b581760926747220300000000000000000100000000000000656432353531390000000000000000002000000000000000bae7e5e40ede0c646f9995ddff4052e201adc1cbda237458a46e88de9bbe3035010000000000000001000000000000000d000000000000001c82d5baf014236c48f88e5793fc8caec1fc8fd727fe5107bd949009dafbf330515ab4ad29e6e36d62f17982ac0000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000a0000000000000004c3ba39c5e411100000000000000000000001000000000000001ac932c4066849910b71cea45d41bd369c5a0ec0d1fb402b581760926747220300000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000016e2463848abc2b9ad088485dfaf1226b935d1c1a61c222c836f012b1aed001a2311a00eecb9932b5a39705fa9f29172e5502cd2f0d43d7ef1edd5e4ea30cb0f"
 )
 
-# # Transaction signature refused test
-# # The test will ask for a transaction signature that will be refused on screen
-# def test_sign_tx_refused(firmware, backend, navigator, test_name):
-#     # Use the app interface instead of raw interface
-#     client = BoilerplateCommandSender(backend)
-#     # Disable raising when trying to unpack an error APDU
-#     backend.raise_policy = RaisePolicy.RAISE_NOTHING
+# Transaction signature refused test
+# The test will ask for a transaction signature that will be refused on screen
+def test_sign_tx_refused(firmware, backend, navigator, test_name):
+    # Use the app interface instead of raw interface
+    client = BoilerplateCommandSender(backend)
+    # Disable raising when trying to unpack an error APDU
+    backend.raise_policy = RaisePolicy.RAISE_NOTHING
 
-#     with client.sign_tx(
-#         key_index=0,
-#         sig_index=0,
-#         change_index=4294967295,
-#         transaction=test_transaction,
-#     ):
-#         if firmware.device.startswith("nano"):
-#             for i in range(10):
-#                 navigator.navigate_until_text_and_compare(
-#                     NavInsID.RIGHT_CLICK,
-#                     [NavInsID.BOTH_CLICK],
-#                     "Reject",
-#                     ROOT_SCREENSHOT_PATH,
-#                     test_name,
-#                 )
-#         else:
-#             navigator.navigate([NavInsID.USE_CASE_REVIEW_REJECT])
+    with client.sign_tx(
+        key_index=0,
+        sig_index=0,
+        change_index=4294967295,
+        transaction=test_transaction,
+    ):
+        if firmware.device.startswith("nano"):
+            instructions = []
+            if firmware.device == "nanos":
+                instructions.extend(4 * [NavInsID.RIGHT_CLICK])
+                instructions.extend([
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.RIGHT_CLICK,
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.BOTH_CLICK,
+                ])
+            else:
+                instructions.extend([
+                    NavInsID.RIGHT_CLICK,
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.BOTH_CLICK,
+                ])
 
-#     response = client.get_async_response()
-#     assert response.status == Errors.SW_DENY
-#     assert len(response.data) == 0
+            instructions.extend([
+                NavInsID.RIGHT_CLICK,
+                NavInsID.RIGHT_CLICK,
+                NavInsID.BOTH_CLICK,
+            ])
+            navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, instructions)
+        else:
+            navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_REVIEW_REJECT])
 
-
-# # Transaction signature accepted test
-# # The test will ask for a transaction signature that will be accepted on screen
-# def test_sign_tx_accept(firmware, backend, navigator, test_name):
-#     # Use the app interface instead of raw interface
-#     client = BoilerplateCommandSender(backend)
-#     # Disable raising when trying to unpack an error APDU
-#     backend.raise_policy = RaisePolicy.RAISE_NOTHING
-
-#     with client.sign_tx(key_index=0, sig_index=0, change_index=4294967295, transaction=test_transaction):
-#         # Disable raising when trying to unpack an error APDU
-#         backend.raise_policy = RaisePolicy.RAISE_NOTHING
-#         if firmware.device.startswith("nano"):
-#             navigator.navigate([NavInsID.RIGHT_CLICK, NavInsID.RIGHT_CLICK, NavInsID.RIGHT_CLICK, NavInsID.RIGHT_CLICK, NavInsID.BOTH_CLICK])
-#             # navigator.navigate_until_text_and_compare(
-#             #     NavInsID.RIGHT_CLICK,
-#             #     [NavInsID.BOTH_CLICK],
-#             #     "Approve",
-#             #     ROOT_SCREENSHOT_PATH,
-#             #     test_name,
-#             # )
-#         else:
-#             navigator.navigate_and_compare(
-#                 ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_REVIEW_TAP]
-#             )
+    response = client.get_async_response()
+    assert response.status == Errors.SW_DENY
+    assert len(response.data) == 0
 
 
-#     response = client.get_async_response()
-#     assert response.status == Errors.SW_OK
-#     assert response.data == base64.b64decode(
-#         "4qZznM8H4VStLIdWeppafXsi9VgTT6A8sM0dG84pXO9NvnaaQK1EJw9iJuMwwPEItANNTIAEvuAzqPPPidMcAg=="
-#     )
+# Transaction signature accepted test
+# The test will ask for a transaction signature that will be accepted on screen
+def test_sign_tx_accept(firmware, backend, navigator, test_name):
+    # Use the app interface instead of raw interface
+    client = BoilerplateCommandSender(backend)
+    # Disable raising when trying to unpack an error APDU
+    backend.raise_policy = RaisePolicy.RAISE_NOTHING
+
+    with client.sign_tx(key_index=0, sig_index=0, change_index=4294967295, transaction=test_transaction):
+        if firmware.device.startswith("nano"):
+            instructions = []
+            if firmware.device == "nanos":
+                instructions.extend(4 * [NavInsID.RIGHT_CLICK])
+                instructions.extend([
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.RIGHT_CLICK,
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.BOTH_CLICK,
+                ])
+            else:
+                instructions.extend([
+                    NavInsID.RIGHT_CLICK,
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.BOTH_CLICK,
+                ])
+
+            instructions.extend([
+                NavInsID.RIGHT_CLICK,
+                NavInsID.BOTH_CLICK,
+            ])
+            navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, instructions)
+        else:
+            instructions = [
+                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.USE_CASE_REVIEW_CONFIRM,
+            ]
+            navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, instructions)
+
+
+    response = client.get_async_response()
+    assert response.status == Errors.SW_OK
+    assert response.data == base64.b64decode(
+        "4qZznM8H4VStLIdWeppafXsi9VgTT6A8sM0dG84pXO9NvnaaQK1EJw9iJuMwwPEItANNTIAEvuAzqPPPidMcAg=="
+    )

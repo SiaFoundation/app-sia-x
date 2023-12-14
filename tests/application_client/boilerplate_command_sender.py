@@ -139,7 +139,7 @@ class BoilerplateCommandSender:
                 p2=P2.P2_SIGN_HASH,
                 data=messages[i],
             ) as response:
-                yield response
+                pass
             p1 = P1.P1_MORE
 
         with self.backend.exchange_async(
