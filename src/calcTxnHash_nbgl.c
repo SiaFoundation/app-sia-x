@@ -100,7 +100,7 @@ static void confirm_callback(bool confirm) {
     }
 }
 
-static nbgl_layoutTagValue_t pairs[3];
+static nbgl_layoutTagValue_t pairs[2];
 
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     ctx->elementIndex = page;
@@ -108,44 +108,42 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
         content->type = INFO_LONG_PRESS;
         content->infoLongPress.icon = &C_stax_app_sia;
         if (ctx->sign) {
-            memmove(ctx->fullStr[0], "with key #", 10);
-            bin2dec(ctx->fullStr[0] + 10, ctx->keyIndex);
-            memmove(ctx->fullStr[0] + 10 + (bin2dec(ctx->fullStr[0] + 10, ctx->keyIndex)), "?", 2);
+            memmove(ctx->fullStr[0], "Sign transaction ", 17);
+            memmove(ctx->fullStr[0] + 17, "with key #", 10);
+            memmove(ctx->fullStr[0] + 17 + 10 + (bin2dec(ctx->fullStr[0] + 17 + 10, ctx->keyIndex)), "?", 2);
 
-            content->infoLongPress.text = "Sign Transaction";
-            content->infoLongPress.longPressText = ctx->fullStr[0];
+            content->infoLongPress.text = ctx->fullStr[0];
+            content->infoLongPress.longPressText = "Hold to sign";
         } else {
-            // prevent this from being sent twice and causing device to hang
-            // bin2hex(ctx->fullStr[0], ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
-
-            content->infoLongPress.text = "Hash Transaction";
-            content->infoLongPress.longPressText = "Confirm";
+            content->infoLongPress.text = "Hash transaction";
+            content->infoLongPress.longPressText = "Hold to hash";
         }
         return true;
     }
 
     fmtTxnElem();
 
-    pairs[0].item = "Label";
-    pairs[0].value = ctx->labelStr;
-
     if (ctx->txn.elements[ctx->elementIndex].elemType == TXN_ELEM_MINER_FEE) {
-        pairs[1].item = "Value";
-        pairs[1].value = ctx->fullStr[0];
+        pairs[0].item = "Miner Fee Amount (SC)";
+        pairs[0].value = ctx->fullStr[0];
+
+        content->tagValueList.nbPairs = 1;
+        content->tagValueList.pairs = &pairs[0];
+    } else {
+        pairs[0].item = "To";
+        pairs[0].value = ctx->fullStr[0];
+        if (ctx->txn.elements[ctx->elementIndex].elemType == TXN_ELEM_SC_OUTPUT) {
+            pairs[1].item = "Amount (SC)";
+        } else {
+            pairs[1].item = "Amount (SF)";
+        }
+        pairs[1].value = ctx->fullStr[1];
 
         content->tagValueList.nbPairs = 2;
         content->tagValueList.pairs = &pairs[0];
-    } else {
-        pairs[1].item = "Address";
-        pairs[1].value = ctx->fullStr[0];
-        pairs[2].item = "Value";
-        pairs[2].value = ctx->fullStr[1];
-
-        content->tagValueList.nbPairs = 3;
-        content->tagValueList.pairs = &pairs[0];
     }
 
-    content->title = NULL;
+    content->title = ctx->labelStr;
     content->type = TAG_VALUE_LIST;
     content->tagValueList.callback = NULL;
 
