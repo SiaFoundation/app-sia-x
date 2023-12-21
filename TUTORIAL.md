@@ -1,6 +1,6 @@
 ## Introduction
 
-This is a guide on how to use the Sia app on a Ledger Nano device.  The Sia app currently supports the Ledger Nano S and Ledger Nano X models and supports transactions involving Siacoins.
+This is a guide on how to use the Sia app on a Ledger Nano device.  The Sia app currently supports the Ledger Stax, Nano S, Nano SP, and Nano X models and supports transactions involving Siacoins and Siafunds.
 
 ## Requirements
 
