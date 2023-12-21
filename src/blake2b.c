@@ -15,9 +15,13 @@ void blake2b_update(cx_blake2b_t *S, const uint8_t *in, uint16_t inlen) {
 }
 
 void blake2b_final(cx_blake2b_t *S, uint8_t *out, uint16_t outlen) {
-    uint8_t buf[32] = {0};
-    LEDGER_ASSERT(CX_OK == cx_hash_no_throw((cx_hash_t *)S, CX_LAST, NULL, 0, buf, sizeof(buf)), "blake2b_final failed");
-    memmove(out, buf, outlen);
+    if (outlen < 32) {
+        uint8_t buf[32] = {0};
+        LEDGER_ASSERT(CX_OK == cx_hash_no_throw((cx_hash_t *)S, CX_LAST, NULL, 0, buf, sizeof(buf)), "blake2b_final failed");
+        memmove(out, buf, outlen);
+    } else {
+        LEDGER_ASSERT(CX_OK == cx_hash_no_throw((cx_hash_t *)S, CX_LAST, NULL, 0, out, outlen), "blake2b_final failed");
+    }
 }
 
 void blake2b(uint8_t *out, uint16_t outlen, const uint8_t *in, uint16_t inlen) {
