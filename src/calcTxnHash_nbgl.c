@@ -108,11 +108,7 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
         content->type = INFO_LONG_PRESS;
         content->infoLongPress.icon = &C_stax_app_sia;
         if (ctx->sign) {
-            memmove(ctx->fullStr[0], "Sign transaction ", 17);
-            memmove(ctx->fullStr[0] + 17, "with key #", 10);
-            memmove(ctx->fullStr[0] + 17 + 10 + (bin2dec(ctx->fullStr[0] + 17 + 10, ctx->keyIndex)), "?", 2);
-
-            content->infoLongPress.text = ctx->fullStr[0];
+            content->infoLongPress.text = "Sign transaction";
             content->infoLongPress.longPressText = "Hold to sign";
         } else {
             content->infoLongPress.text = "Hash transaction";
