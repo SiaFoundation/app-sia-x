@@ -39,63 +39,43 @@ static uint16_t display_index(void);
 static unsigned int ui_calcTxnHash_elem_button(void);
 static unsigned int io_seproxyhal_touch_txn_hash_ok(void);
 
-UX_STEP_CB(
-    ux_compare_hash_flow_1_step,
-    bnnn_paging,
-    ui_idle(),
-    {"Compare Hash:",
-     global.calcTxnHashContext.fullStr[0]});
+UX_STEP_CB(ux_compare_hash_flow_1_step,
+           bnnn_paging,
+           ui_idle(),
+           {"Compare Hash:", global.calcTxnHashContext.fullStr[0]});
 
-UX_FLOW(
-    ux_compare_hash_flow,
-    &ux_compare_hash_flow_1_step);
+UX_FLOW(ux_compare_hash_flow, &ux_compare_hash_flow_1_step);
 
-UX_STEP_NOCB(
-    ux_sign_txn_flow_1_step,
-    nn,
-    {"Sign this txn",
-     global.calcTxnHashContext.fullStr[0]});
+UX_STEP_NOCB(ux_sign_txn_flow_1_step, nn, {"Sign this txn", global.calcTxnHashContext.fullStr[0]});
 
-UX_STEP_VALID(
-    ux_sign_txn_flow_2_step,
-    pb,
-    io_seproxyhal_touch_txn_hash_ok(),
-    {&C_icon_validate,
-     "Approve"});
+UX_STEP_VALID(ux_sign_txn_flow_2_step,
+              pb,
+              io_seproxyhal_touch_txn_hash_ok(),
+              {&C_icon_validate, "Approve"});
 
-UX_STEP_VALID(
-    ux_sign_txn_flow_3_step,
-    pb,
-    io_seproxyhal_cancel(),
-    {&C_icon_crossmark,
-     "Reject"});
+UX_STEP_VALID(ux_sign_txn_flow_3_step, pb, io_seproxyhal_cancel(), {&C_icon_crossmark, "Reject"});
 
 // Flow for the signing transaction menu:
 // #1 screen: "Sign this txn?"
 // #2 screen: approve
 // #3 screen: reject
-UX_FLOW(
-    ux_sign_txn_flow,
-    &ux_sign_txn_flow_1_step,
-    &ux_sign_txn_flow_2_step,
-    &ux_sign_txn_flow_3_step);
+UX_FLOW(ux_sign_txn_flow,
+        &ux_sign_txn_flow_1_step,
+        &ux_sign_txn_flow_2_step,
+        &ux_sign_txn_flow_3_step);
 
 // We use one generic step for each element so we don't have to make
 // separate UX_FLOWs for SC outputs, SF outputs, miner fees, etc
-UX_STEP_CB(
-    ux_show_txn_elem_1_step,
-    bnnn_paging,
-    ui_calcTxnHash_elem_button(),
-    {global.calcTxnHashContext.labelStr,
-     global.calcTxnHashContext.fullStr[0]});
+UX_STEP_CB(ux_show_txn_elem_1_step,
+           bnnn_paging,
+           ui_calcTxnHash_elem_button(),
+           {global.calcTxnHashContext.labelStr, global.calcTxnHashContext.fullStr[0]});
 
 // For each element of the transaction (sc outputs, sf outputs, miner fees),
 // we show the data paginated for confirmation purposes. When the user
 // confirms that element, they are shown the next element until
 // they finish all the elements and are given the option to approve/reject.
-UX_FLOW(
-    ux_show_txn_elem_flow,
-    &ux_show_txn_elem_1_step);
+UX_FLOW(ux_show_txn_elem_flow, &ux_show_txn_elem_1_step);
 static unsigned int io_seproxyhal_touch_txn_hash_ok(void) {
     deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
     io_exchange_with_code(SW_OK, 64);
@@ -164,7 +144,8 @@ static void fmtTxnElem(void) {
                 format_address(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr);
                 ctx->elemPart++;
             } else {
-                const uint8_t valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
+                const uint8_t valLen =
+                    cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
                 formatSC(ctx->fullStr[0], valLen);
                 ctx->elemPart = 0;
 
@@ -179,7 +160,8 @@ static void fmtTxnElem(void) {
                 format_address(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr);
                 ctx->elemPart++;
             } else {
-                const uint8_t valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
+                const uint8_t valLen =
+                    cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
                 memmove(ctx->fullStr[0] + valLen, " SF", 4);
                 ctx->elemPart = 0;
 
@@ -192,7 +174,8 @@ static void fmtTxnElem(void) {
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
 
-            const uint8_t valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
+            const uint8_t valLen =
+                cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
             formatSC(ctx->fullStr[0], valLen);
 
             ctx->elemPart = 0;
@@ -216,7 +199,12 @@ static void zero_ctx(void) {
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
 // piece-wise to the user.
-void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx __attribute__((unused))) {
+void handleCalcTxnHash(uint8_t p1,
+                       uint8_t p2,
+                       uint8_t *dataBuffer,
+                       uint16_t dataLength,
+                       volatile unsigned int *flags,
+                       volatile unsigned int *tx __attribute__((unused))) {
     if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
         THROW(SW_INVALID_PARAM);
     }

@@ -222,7 +222,8 @@ static void __txn_next_elem(txn_state_t *txn) {
 
         // if we've reached the TransactionSignatures, check that sigIndex is
         // a valid index
-        if ((txn->elements[txn->elementIndex].elemType == TXN_ELEM_TXN_SIG) && (txn->sigIndex >= txn->sliceLen)) {
+        if ((txn->elements[txn->elementIndex].elemType == TXN_ELEM_TXN_SIG) &&
+            (txn->sigIndex >= txn->sliceLen)) {
             THROW(TXN_STATE_ERR);
         }
     }
@@ -230,27 +231,31 @@ static void __txn_next_elem(txn_state_t *txn) {
     switch (txn->elements[txn->elementIndex].elemType) {
         // these elements should be displayed
         case TXN_ELEM_SC_OUTPUT:
-            readCurrency(txn, txn->elements[txn->elementIndex].outVal);       // Value
-            readHash(txn, (char *)txn->elements[txn->elementIndex].outAddr);  // UnlockHash
+            readCurrency(txn, txn->elements[txn->elementIndex].outVal);        // Value
+            readHash(txn, (char *) txn->elements[txn->elementIndex].outAddr);  // UnlockHash
             advance(txn);
-            if (!memcmp(txn->elements[txn->elementIndex].outAddr, txn->changeAddr, sizeof(txn->elements[txn->elementIndex].outAddr))) {
+            if (!memcmp(txn->elements[txn->elementIndex].outAddr,
+                        txn->changeAddr,
+                        sizeof(txn->elements[txn->elementIndex].outAddr))) {
                 // do not display the change address or increment displayIndex
                 return;
             }
 
             txn->sliceIndex++;
-            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elements[txn->elementIndex + 1].elemType =
+                txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
             return;
 
         case TXN_ELEM_SF_OUTPUT:
-            readCurrency(txn, txn->elements[txn->elementIndex].outVal);       // Value
-            readHash(txn, (char *)txn->elements[txn->elementIndex].outAddr);  // UnlockHash
-            readCurrency(txn, NULL);                                          // ClaimStart
+            readCurrency(txn, txn->elements[txn->elementIndex].outVal);        // Value
+            readHash(txn, (char *) txn->elements[txn->elementIndex].outAddr);  // UnlockHash
+            readCurrency(txn, NULL);                                           // ClaimStart
             advance(txn);
 
             txn->sliceIndex++;
-            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elements[txn->elementIndex + 1].elemType =
+                txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
             return;
 
@@ -260,7 +265,8 @@ static void __txn_next_elem(txn_state_t *txn) {
             advance(txn);
 
             txn->sliceIndex++;
-            txn->elements[txn->elementIndex + 1].elemType = txn->elements[txn->elementIndex].elemType;
+            txn->elements[txn->elementIndex + 1].elemType =
+                txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
             return;
 
@@ -344,7 +350,7 @@ void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
 
     uint8_t publicKey[65] = {0};
     deriveSiaPublicKey(changeIndex, publicKey);
-    pubkeyToSiaAddress((char *)&txn->changeAddr, publicKey);
+    pubkeyToSiaAddress((char *) &txn->changeAddr, publicKey);
 
     // initialize hash state
     blake2b_init(&txn->blake);
