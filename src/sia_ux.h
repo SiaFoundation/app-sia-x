@@ -15,45 +15,45 @@
 // command.
 
 typedef struct {
-	uint32_t keyIndex;
-	bool genAddr;
-	// NUL-terminated strings for display
-	char typeStr[40]; // variable-length
-	char keyStr[40]; // variable-length
-	char fullStr[77]; // variable length
+    uint32_t keyIndex;
+    bool genAddr;
+    // NUL-terminated strings for display
+    char typeStr[40];  // variable-length
+    char keyStr[40];   // variable-length
+    char fullStr[77];  // variable length
 } getPublicKeyContext_t;
 
 #define SIA_HASH_SIZE 32
 
 typedef struct {
-	uint32_t keyIndex;
-	uint8_t hash[SIA_HASH_SIZE];
+    uint32_t keyIndex;
+    uint8_t hash[SIA_HASH_SIZE];
 
-	char typeStr[40];
-	char hexHash[SIA_HASH_SIZE * 2];
+    char typeStr[40];
+    char hexHash[SIA_HASH_SIZE * 2];
 } signHashContext_t;
 
 typedef struct {
-	uint32_t keyIndex;
-	bool sign;
-	uint8_t elemPart; // screen index of elements
+    uint32_t keyIndex;
+    bool sign;
+    uint8_t elemPart;  // screen index of elements
 
-	uint16_t elementIndex;
+    uint16_t elementIndex;
 
-	txn_state_t txn;
-	// NULL-terminated strings for display
-	char labelStr[40]; // variable length
-	char fullStr[2][128]; // variable length
-	bool initialized; // protects against certain attacks
-	bool finished; // whether we have reached the end of the transaction
+    txn_state_t txn;
+    // NULL-terminated strings for display
+    char labelStr[40];     // variable length
+    char fullStr[2][128];  // variable length
+    bool initialized;      // protects against certain attacks
+    bool finished;         // whether we have reached the end of the transaction
 } calcTxnHashContext_t;
 
 // To save memory, we store all the context types in a single global union,
 // taking advantage of the fact that only one command is executed at a time.
 typedef union {
-	getPublicKeyContext_t getPublicKeyContext;
-	signHashContext_t signHashContext;
-	calcTxnHashContext_t calcTxnHashContext;
+    getPublicKeyContext_t getPublicKeyContext;
+    signHashContext_t signHashContext;
+    calcTxnHashContext_t calcTxnHashContext;
 } commandContext;
 extern commandContext global;
 
@@ -68,10 +68,38 @@ extern commandContext global;
 // In the event that you want to define your own UI elements from scratch,
 // you'll want to read include/bagl.h and include/os_io_seproxyhal.h in the
 // nanos-secure-sdk repo to learn what each of the fields are used for.
-#define UI_BACKGROUND() {{BAGL_RECTANGLE,0,0,0,128,32,0,0,BAGL_FILL,0,0xFFFFFF,0,0},NULL,0,0,0,NULL,NULL,NULL}
-#define UI_ICON_LEFT(userid, glyph) {{BAGL_ICON,userid,3,12,7,7,0,0,0,0xFFFFFF,0,0,glyph},NULL,0,0,0,NULL,NULL,NULL}
-#define UI_ICON_RIGHT(userid, glyph) {{BAGL_ICON,userid,117,13,8,6,0,0,0,0xFFFFFF,0,0,glyph},NULL,0,0,0,NULL,NULL,NULL}
-#define UI_TEXT(userid, x, y, w, text) {{BAGL_LABELINE,userid,x,y,w,12,0,0,0,0xFFFFFF,0,BAGL_FONT_OPEN_SANS_REGULAR_11px|BAGL_FONT_ALIGNMENT_CENTER,0},(char *)text,0,0,0,NULL,NULL,NULL}
+#define UI_BACKGROUND()                                                                        \
+    {                                                                                          \
+        {BAGL_RECTANGLE, 0, 0, 0, 128, 32, 0, 0, BAGL_FILL, 0, 0xFFFFFF, 0, 0}, NULL, 0, 0, 0, \
+            NULL, NULL, NULL                                                                   \
+    }
+#define UI_ICON_LEFT(userid, glyph)                                                            \
+    {                                                                                          \
+        {BAGL_ICON, userid, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0, 0, glyph}, NULL, 0, 0, 0, NULL, \
+            NULL, NULL                                                                         \
+    }
+#define UI_ICON_RIGHT(userid, glyph)                                                             \
+    {                                                                                            \
+        {BAGL_ICON, userid, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0, 0, glyph}, NULL, 0, 0, 0, NULL, \
+            NULL, NULL                                                                           \
+    }
+#define UI_TEXT(userid, x, y, w, text)                                  \
+    {                                                                   \
+        {BAGL_LABELINE,                                                 \
+         userid,                                                        \
+         x,                                                             \
+         y,                                                             \
+         w,                                                             \
+         12,                                                            \
+         0,                                                             \
+         0,                                                             \
+         0,                                                             \
+         0xFFFFFF,                                                      \
+         0,                                                             \
+         BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, \
+         0},                                                            \
+            (char *) text, 0, 0, 0, NULL, NULL, NULL                    \
+    }
 
 // ui_idle displays the main menu screen. Command handlers should call ui_idle
 // when they finish.
