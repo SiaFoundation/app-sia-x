@@ -31,7 +31,7 @@
 // These are APDU parameters that control the behavior of the getPublicKey
 // command.
 #define P2_DISPLAY_ADDRESS 0x00
-#define P2_DISPLAY_PUBKEY 0x01
+#define P2_DISPLAY_PUBKEY  0x01
 
 // Get a pointer to getPublicKey's state variables.
 static getPublicKeyContext_t* ctx = &global.getPublicKeyContext;
@@ -40,45 +40,32 @@ static unsigned int io_seproxyhal_touch_pk_ok(void);
 
 #ifdef HAVE_BAGL
 // Allows scrolling through the address/public key
-UX_STEP_CB(
-    ux_compare_pk_flow_1_step,
-    bnnn_paging,
-    ui_idle(),
-    {"Compare",
-     global.getPublicKeyContext.fullStr});
+UX_STEP_CB(ux_compare_pk_flow_1_step,
+           bnnn_paging,
+           ui_idle(),
+           {"Compare", global.getPublicKeyContext.fullStr});
 
-UX_FLOW(
-    ux_compare_pk_flow,
-    &ux_compare_pk_flow_1_step);
+UX_FLOW(ux_compare_pk_flow, &ux_compare_pk_flow_1_step);
 
-UX_STEP_NOCB(
-    ux_approve_pk_flow_1_step, bn,
-    {global.getPublicKeyContext.typeStr,
-     global.getPublicKeyContext.keyStr});
+UX_STEP_NOCB(ux_approve_pk_flow_1_step,
+             bn,
+             {global.getPublicKeyContext.typeStr, global.getPublicKeyContext.keyStr});
 
-UX_STEP_VALID(
-    ux_approve_pk_flow_2_step,
-    pb,
-    io_seproxyhal_touch_pk_ok(),
-    {&C_icon_validate,
-     "Approve"});
+UX_STEP_VALID(ux_approve_pk_flow_2_step,
+              pb,
+              io_seproxyhal_touch_pk_ok(),
+              {&C_icon_validate, "Approve"});
 
-UX_STEP_VALID(
-    ux_approve_pk_flow_3_step,
-    pb,
-    io_seproxyhal_cancel(),
-    {&C_icon_crossmark,
-     "Reject"});
+UX_STEP_VALID(ux_approve_pk_flow_3_step, pb, io_seproxyhal_cancel(), {&C_icon_crossmark, "Reject"});
 
 // Flow for the public key/address menu:
 // #1 screen: "generate address/public key from key #x?"
 // #2 screen: approve
 // #3 screen: reject
-UX_FLOW(
-    ux_approve_pk_flow,
-    &ux_approve_pk_flow_1_step,
-    &ux_approve_pk_flow_2_step,
-    &ux_approve_pk_flow_3_step);
+UX_FLOW(ux_approve_pk_flow,
+        &ux_approve_pk_flow_1_step,
+        &ux_approve_pk_flow_2_step,
+        &ux_approve_pk_flow_3_step);
 #else
 
 static void cancel_status(void) {
@@ -124,7 +111,7 @@ static unsigned int io_seproxyhal_touch_pk_ok(void) {
     deriveSiaPublicKey(ctx->keyIndex, publicKey);
     extractPubkeyBytes(G_io_apdu_buffer + tx, publicKey);
     tx += 32;
-    pubkeyToSiaAddress((char*)G_io_apdu_buffer + tx, publicKey);
+    pubkeyToSiaAddress((char*) G_io_apdu_buffer + tx, publicKey);
     tx += 76;
 
     // Flush the APDU buffer, sending the response.
@@ -150,7 +137,10 @@ static unsigned int io_seproxyhal_touch_pk_ok(void) {
     return 0;
 }
 
-void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
+void handleGetPublicKey(uint8_t p1,
+                        uint8_t p2,
+                        uint8_t* buffer,
+                        uint16_t len,
                         /* out */ volatile unsigned int* flags,
                         /* out */ volatile unsigned int* tx) {
     UNUSED(p1);

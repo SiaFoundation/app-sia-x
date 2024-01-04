@@ -23,7 +23,16 @@ void deriveSiaPublicKey(uint32_t index, uint8_t publicKey[static 65]) {
     uint32_t bip32Path[5];
     siaSetPath(index, bip32Path);
 
-    LEDGER_ASSERT(CX_OK == bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, publicKey, NULL, CX_SHA512, NULL, 0), "get pubkey failed");
+    LEDGER_ASSERT(CX_OK == bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10,
+                                                                 CX_CURVE_Ed25519,
+                                                                 bip32Path,
+                                                                 5,
+                                                                 publicKey,
+                                                                 NULL,
+                                                                 CX_SHA512,
+                                                                 NULL,
+                                                                 0),
+                  "get pubkey failed");
 }
 
 void extractPubkeyBytes(unsigned char *dst, const uint8_t publicKey[static 65]) {
@@ -40,7 +49,18 @@ void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
     siaSetPath(index, bip32Path);
 
     size_t signatureLength = 64;
-    LEDGER_ASSERT(CX_OK == bip32_derive_with_seed_eddsa_sign_hash_256(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, CX_SHA512, hash, 32, dst, &signatureLength, NULL, 0), "signing txn failed");
+    LEDGER_ASSERT(CX_OK == bip32_derive_with_seed_eddsa_sign_hash_256(HDW_ED25519_SLIP10,
+                                                                      CX_CURVE_Ed25519,
+                                                                      bip32Path,
+                                                                      5,
+                                                                      CX_SHA512,
+                                                                      hash,
+                                                                      32,
+                                                                      dst,
+                                                                      &signatureLength,
+                                                                      NULL,
+                                                                      0),
+                  "signing txn failed");
 }
 
 void bin2hex(char *dst, const uint8_t *data, uint64_t inlen) {

@@ -49,7 +49,8 @@ static void fmtTxnElem(void) {
             // These are rendered in separate screens, and elemPart is used to
             // identify which screen is being viewed.
             format_address(ctx->fullStr[0], txn->elements[ctx->elementIndex].outAddr);
-            const uint8_t valLen = cur2dec(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal);
+            const uint8_t valLen =
+                cur2dec(ctx->fullStr[1], txn->elements[ctx->elementIndex].outVal);
             formatSC(ctx->fullStr[1], valLen);
             break;
         }
@@ -67,7 +68,8 @@ static void fmtTxnElem(void) {
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
 
-            const uint8_t valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
+            const uint8_t valLen =
+                cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
             formatSC(ctx->fullStr[0], valLen);
             break;
         }
@@ -152,7 +154,12 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
 }
 
 static void begin_review(void) {
-    nbgl_useCaseRegularReview(0, ctx->txn.elementIndex + 1, "Cancel", NULL, nav_callback, confirm_callback);
+    nbgl_useCaseRegularReview(0,
+                              ctx->txn.elementIndex + 1,
+                              "Cancel",
+                              NULL,
+                              nav_callback,
+                              confirm_callback);
 }
 
 static void cancel_review(void) {
@@ -167,7 +174,12 @@ static void zero_ctx(void) {
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
 // piece-wise to the user.
-void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx __attribute__((unused))) {
+void handleCalcTxnHash(uint8_t p1,
+                       uint8_t p2,
+                       uint8_t *dataBuffer,
+                       uint16_t dataLength,
+                       volatile unsigned int *flags,
+                       volatile unsigned int *tx __attribute__((unused))) {
     if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
         THROW(SW_INVALID_PARAM);
     }
@@ -226,7 +238,12 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
             break;
         case TXN_STATE_FINISHED:
             *flags |= IO_ASYNCH_REPLY;
-            nbgl_useCaseReviewStart(&C_stax_app_sia, (ctx->sign) ? "Sign Transaction" : "Hash Transaction", NULL, "Cancel", begin_review, cancel_review);
+            nbgl_useCaseReviewStart(&C_stax_app_sia,
+                                    (ctx->sign) ? "Sign Transaction" : "Hash Transaction",
+                                    NULL,
+                                    "Cancel",
+                                    begin_review,
+                                    cancel_review);
             break;
     }
 }

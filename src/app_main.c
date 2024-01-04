@@ -134,61 +134,28 @@ void ui_idle(void);
 void ui_menu_about(void);
 
 #ifdef HAVE_BAGL
-UX_STEP_NOCB(
-    ux_menu_ready_step,
-    nn,
-    {"Awaiting",
-     "commands"});
-UX_STEP_CB(
-    ux_menu_about_step,
-    pn,
-    ui_menu_about(),
-    {&C_icon_certificate,
-     "About"});
-UX_STEP_VALID(
-    ux_menu_exit_step,
-    pn,
-    os_sched_exit(0),
-    {&C_icon_dashboard,
-     "Quit"});
+UX_STEP_NOCB(ux_menu_ready_step, nn, {"Awaiting", "commands"});
+UX_STEP_CB(ux_menu_about_step, pn, ui_menu_about(), {&C_icon_certificate, "About"});
+UX_STEP_VALID(ux_menu_exit_step, pn, os_sched_exit(0), {&C_icon_dashboard, "Quit"});
 
 // flow for the main menu:
 // #1 screen: ready
 // #2 screen: about submenu
 // #3 screen: quit
-UX_FLOW(
-    ux_menu_main_flow,
-    &ux_menu_ready_step,
-    &ux_menu_about_step,
-    &ux_menu_exit_step,
-    FLOW_LOOP);
+UX_FLOW(ux_menu_main_flow, &ux_menu_ready_step, &ux_menu_about_step, &ux_menu_exit_step, FLOW_LOOP);
 
-UX_STEP_NOCB(
-    ux_menu_version_step,
-    bn,
-    {"Version",
-     APPVERSION});
-UX_STEP_NOCB(
-    ux_menu_developer_step,
-    bn,
-    {"Developer",
-     APPDEVELOPER});
-UX_STEP_CB(
-    ux_menu_back_step,
-    pb,
-    ui_idle(),
-    {&C_icon_back,
-     "Back"});
+UX_STEP_NOCB(ux_menu_version_step, bn, {"Version", APPVERSION});
+UX_STEP_NOCB(ux_menu_developer_step, bn, {"Developer", APPDEVELOPER});
+UX_STEP_CB(ux_menu_back_step, pb, ui_idle(), {&C_icon_back, "Back"});
 
 // flow for the about submenu:
 // #1 screen: app version
 // #2 screen: back button
-UX_FLOW(
-    ux_menu_about_flow,
-    &ux_menu_version_step,
-    &ux_menu_developer_step,
-    &ux_menu_back_step,
-    FLOW_LOOP);
+UX_FLOW(ux_menu_about_flow,
+        &ux_menu_version_step,
+        &ux_menu_developer_step,
+        &ux_menu_back_step,
+        FLOW_LOOP);
 
 void ui_idle(void) {
     if (G_ux.stack_count == 0) {
@@ -249,16 +216,21 @@ unsigned int io_seproxyhal_cancel(void) {
 // The APDU protocol uses a single-byte instruction code (INS) to specify
 // which command should be executed. We'll use this code to dispatch on a
 // table of function pointers.
-#define INS_GET_VERSION 0x01
+#define INS_GET_VERSION    0x01
 #define INS_GET_PUBLIC_KEY 0x02
-#define INS_SIGN_HASH 0x04
-#define INS_GET_TXN_HASH 0x08
+#define INS_SIGN_HASH      0x04
+#define INS_GET_TXN_HASH   0x08
 
 // This is the function signature for a command handler. 'flags' and 'tx' are
 // out-parameters that will control the behavior of the next io_exchange call
 // in sia_main. It's common to set *flags |= IO_ASYNC_REPLY, but tx is
 // typically unused unless the handler is immediately sending a response APDU.
-typedef void handler_fn_t(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, volatile unsigned int *flags, volatile unsigned int *tx);
+typedef void handler_fn_t(uint8_t p1,
+                          uint8_t p2,
+                          uint8_t *dataBuffer,
+                          uint16_t dataLength,
+                          volatile unsigned int *flags,
+                          volatile unsigned int *tx);
 
 handler_fn_t handleGetVersion;
 handler_fn_t handleGetPublicKey;
@@ -283,12 +255,12 @@ static handler_fn_t *lookupHandler(uint8_t ins) {
 // These are the offsets of various parts of a request APDU packet. INS
 // identifies the requested command (see above), and P1 and P2 are parameters
 // to the command.
-#define CLA 0xE0
-#define OFFSET_CLA 0x00
-#define OFFSET_INS 0x01
-#define OFFSET_P1 0x02
-#define OFFSET_P2 0x03
-#define OFFSET_LC 0x04
+#define CLA          0xE0
+#define OFFSET_CLA   0x00
+#define OFFSET_INS   0x01
+#define OFFSET_P1    0x02
+#define OFFSET_P2    0x03
+#define OFFSET_LC    0x04
 #define OFFSET_CDATA 0x05
 
 // This is the main loop that reads and writes APDUs. It receives request
@@ -339,15 +311,20 @@ static void sia_main(void) {
                     THROW(0x6D00);
                 }
 
-// without calling this, pagination will always begin on the last page if a paginated menu has been scrolled through before during the session
+// without calling this, pagination will always begin on the last page if a paginated menu has been
+// scrolled through before during the session
 #ifdef TARGET_NANOX
                 ux_layout_bnnn_paging_reset();
 #elif defined(HAVE_BAGL)
                 ux_layout_paging_reset();
 #endif
 
-                handlerFn(G_io_apdu_buffer[OFFSET_P1], G_io_apdu_buffer[OFFSET_P2],
-                          G_io_apdu_buffer + OFFSET_CDATA, G_io_apdu_buffer[OFFSET_LC], &flags, &tx);
+                handlerFn(G_io_apdu_buffer[OFFSET_P1],
+                          G_io_apdu_buffer[OFFSET_P2],
+                          G_io_apdu_buffer + OFFSET_CDATA,
+                          G_io_apdu_buffer[OFFSET_LC],
+                          &flags,
+                          &tx);
             }
             CATCH(EXCEPTION_IO_RESET) {
                 THROW(EXCEPTION_IO_RESET);
@@ -395,7 +372,7 @@ static void sia_main(void) {
 // override point, but nothing more to do
 #ifdef HAVE_BAGL
 void io_seproxyhal_display(const bagl_element_t *element) {
-    io_seproxyhal_display_default((bagl_element_t *)element);
+    io_seproxyhal_display_default((bagl_element_t *) element);
 }
 #endif
 
