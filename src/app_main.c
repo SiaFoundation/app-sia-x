@@ -107,6 +107,7 @@
 #include <os_io_seproxyhal.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <io.h>
 #include <ux.h>
 
 #include "blake2b.h"
@@ -263,17 +264,104 @@ static handler_fn_t *lookupHandler(uint8_t ins) {
 #define OFFSET_LC    0x04
 #define OFFSET_CDATA 0x05
 
-// This is the main loop that reads and writes APDUs. It receives request
-// APDUs from the computer, looks up the corresponding command handler, and
-// calls it on the APDU payload. Then it loops around and calls io_exchange
-// again. The handler may set the 'flags' and 'tx' variables, which affect the
-// subsequent io_exchange call. The handler may also throw an exception, which
-// will be caught, converted to an error code, appended to the response APDU,
-// and sent in the next io_exchange call.
-static void sia_main(void) {
+// Everything below this point is Ledger magic. And the magic isn't well-
+// documented, so if you want to understand it, you'll need to read the
+// source, which you can find in the nanos-secure-sdk repo. Fortunately, you
+// don't need to understand any of this in order to write an app.
+//
+// Next, we'll look at how the various commands are implemented. We'll start
+// with the simplest command, signHash.c.
+
+// override point, but nothing more to do
+#ifdef HAVE_BAGL
+void io_seproxyhal_display(const bagl_element_t *element) {
+    io_seproxyhal_display_default((bagl_element_t *) element);
+}
+#endif
+
+uint8_t io_event(uint8_t channel) {
+    UNUSED(channel);
+
+    switch (G_io_seproxyhal_spi_buffer[0]) {
+        case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
+#ifdef HAVE_BAGL
+            UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
+#endif  // HAVE_BAGL
+            break;
+        case SEPROXYHAL_TAG_STATUS_EVENT:
+            if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&  //
+                !(U4BE(G_io_seproxyhal_spi_buffer, 3) &      //
+                  SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
+                THROW(EXCEPTION_IO_RESET);
+            }
+            __attribute__((fallthrough));
+        case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
+#ifdef HAVE_BAGL
+            UX_DISPLAYED_EVENT({});
+#endif  // HAVE_BAGL
+#ifdef HAVE_NBGL
+            UX_DEFAULT_EVENT();
+#endif  // HAVE_NBGL
+            break;
+#ifdef HAVE_NBGL
+        case SEPROXYHAL_TAG_FINGER_EVENT:
+            UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
+            break;
+#endif  // HAVE_NBGL
+        case SEPROXYHAL_TAG_TICKER_EVENT:
+            UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
+            break;
+        default:
+            UX_DEFAULT_EVENT();
+            break;
+    }
+
+    if (!io_seproxyhal_spi_is_status_sent()) {
+        io_seproxyhal_general_status();
+    }
+
+    return 1;
+}
+
+uint16_t io_exchange_al(uint8_t channel, uint16_t tx_len) {
+    switch (channel & ~(IO_FLAGS)) {
+        case CHANNEL_KEYBOARD:
+            break;
+        case CHANNEL_SPI:
+            if (tx_len) {
+                io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
+
+                if (channel & IO_RESET_AFTER_REPLIED) {
+                    halt();
+                }
+
+                return 0;
+            } else {
+                return io_seproxyhal_spi_recv(G_io_apdu_buffer, sizeof(G_io_apdu_buffer), 0);
+            }
+        default:
+            THROW(INVALID_PARAMETER);
+    }
+
+    return 0;
+}
+
+void app_main() {
     // Mark the transaction context as uninitialized.
     explicit_bzero(&global, sizeof(global));
 
+    // Initialize io
+    io_init();
+
+    ui_idle();
+
+    // This is the main loop that reads and writes APDUs. It receives request
+    // APDUs from the computer, looks up the corresponding command handler, and
+    // calls it on the APDU payload. Then it loops around and calls io_exchange
+    // again. The handler may set the 'flags' and 'tx' variables, which affect the
+    // subsequent io_exchange call. The handler may also throw an exception, which
+    // will be caught, converted to an error code, appended to the response APDU,
+    // and sent in the next io_exchange call.
     volatile unsigned int rx = 0;
     volatile unsigned int tx = 0;
     volatile unsigned int flags = 0;
@@ -359,138 +447,4 @@ static void sia_main(void) {
         }
         END_TRY;
     }
-}
-
-// Everything below this point is Ledger magic. And the magic isn't well-
-// documented, so if you want to understand it, you'll need to read the
-// source, which you can find in the nanos-secure-sdk repo. Fortunately, you
-// don't need to understand any of this in order to write an app.
-//
-// Next, we'll look at how the various commands are implemented. We'll start
-// with the simplest command, signHash.c.
-
-// override point, but nothing more to do
-#ifdef HAVE_BAGL
-void io_seproxyhal_display(const bagl_element_t *element) {
-    io_seproxyhal_display_default((bagl_element_t *) element);
-}
-#endif
-
-uint8_t io_event(uint8_t channel) {
-    UNUSED(channel);
-
-    switch (G_io_seproxyhal_spi_buffer[0]) {
-        case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
-#ifdef HAVE_BAGL
-            UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
-#endif  // HAVE_BAGL
-            break;
-        case SEPROXYHAL_TAG_STATUS_EVENT:
-            if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&  //
-                !(U4BE(G_io_seproxyhal_spi_buffer, 3) &      //
-                  SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
-                THROW(EXCEPTION_IO_RESET);
-            }
-            __attribute__((fallthrough));
-        case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
-#ifdef HAVE_BAGL
-            UX_DISPLAYED_EVENT({});
-#endif  // HAVE_BAGL
-#ifdef HAVE_NBGL
-            UX_DEFAULT_EVENT();
-#endif  // HAVE_NBGL
-            break;
-#ifdef HAVE_NBGL
-        case SEPROXYHAL_TAG_FINGER_EVENT:
-            UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
-            break;
-#endif  // HAVE_NBGL
-        case SEPROXYHAL_TAG_TICKER_EVENT:
-            UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
-            break;
-        default:
-            UX_DEFAULT_EVENT();
-            break;
-    }
-
-    if (!io_seproxyhal_spi_is_status_sent()) {
-        io_seproxyhal_general_status();
-    }
-
-    return 1;
-}
-
-uint16_t io_exchange_al(uint8_t channel, uint16_t tx_len) {
-    switch (channel & ~(IO_FLAGS)) {
-        case CHANNEL_KEYBOARD:
-            break;
-        case CHANNEL_SPI:
-            if (tx_len) {
-                io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
-
-                if (channel & IO_RESET_AFTER_REPLIED) {
-                    halt();
-                }
-
-                return 0;
-            } else {
-                return io_seproxyhal_spi_recv(G_io_apdu_buffer, sizeof(G_io_apdu_buffer), 0);
-            }
-        default:
-            THROW(INVALID_PARAMETER);
-    }
-
-    return 0;
-}
-
-static void app_exit(void) {
-    BEGIN_TRY_L(exit) {
-        TRY_L(exit) {
-            os_sched_exit(-1);
-        }
-        FINALLY_L(exit) {
-        }
-    }
-    END_TRY_L(exit);
-}
-
-void app_main() {
-    // exit critical section
-    // __asm volatile("cpsie i");
-
-    for (;;) {
-        UX_INIT();
-        os_boot();
-        BEGIN_TRY {
-            TRY {
-                io_seproxyhal_init();
-
-#ifdef HAVE_BLE
-                G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
-#endif
-
-                USB_power(0);
-                USB_power(1);
-
-#ifdef HAVE_BLE
-                BLE_power(0, NULL);
-                BLE_power(1, NULL);
-#endif
-
-                ui_idle();
-                sia_main();
-            }
-            CATCH(EXCEPTION_IO_RESET) {
-                // reset IO and UX before continuing
-                continue;
-            }
-            CATCH_ALL {
-                break;
-            }
-            FINALLY {
-            }
-        }
-        END_TRY;
-    }
-    app_exit();
 }
