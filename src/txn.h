@@ -13,9 +13,9 @@
 
 // macros for converting raw bytes to uint64_t
 #define U8BE(buf, off) \
-    (((uint64_t) (U4BE(buf, off)) << 32) | ((uint64_t) (U4BE(buf, off + 4)) & 0xFFFFFFFF))
+    (((uint64_t)(U4BE(buf, off)) << 32) | ((uint64_t)(U4BE(buf, off + 4)) & 0xFFFFFFFF))
 #define U8LE(buf, off) \
-    (((uint64_t) (U4LE(buf, off + 4)) << 32) | ((uint64_t) (U4LE(buf, off)) & 0xFFFFFFFF))
+    (((uint64_t)(U4LE(buf, off + 4)) << 32) | ((uint64_t)(U4LE(buf, off)) & 0xFFFFFFFF))
 
 // txnDecoderState_e indicates a transaction decoder status
 typedef enum {
