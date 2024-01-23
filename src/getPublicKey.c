@@ -36,7 +36,7 @@
 // Get a pointer to getPublicKey's state variables.
 static getPublicKeyContext_t* ctx = &global.getPublicKeyContext;
 
-static unsigned int io_seproxyhal_touch_pk_ok(void);
+static unsigned int send_pubkey(void);
 
 #ifdef HAVE_BAGL
 // Allows scrolling through the address/public key
@@ -51,10 +51,7 @@ UX_STEP_NOCB(ux_approve_pk_flow_1_step,
              bn,
              {global.getPublicKeyContext.typeStr, global.getPublicKeyContext.keyStr});
 
-UX_STEP_VALID(ux_approve_pk_flow_2_step,
-              pb,
-              io_seproxyhal_touch_pk_ok(),
-              {&C_icon_validate_14, "Approve"});
+UX_STEP_VALID(ux_approve_pk_flow_2_step, pb, send_pubkey(), {&C_icon_validate_14, "Approve"});
 
 UX_STEP_VALID(ux_approve_pk_flow_3_step, pb, io_reject(), {&C_icon_crossmark, "Reject"});
 
@@ -78,7 +75,7 @@ static void cancel_status(void) {
 
 static void confirm_address_rejection(void) {
     // display a status page and go back to main
-    io_exchange_with_code(SW_USER_REJECTED, 0);
+    io_send_sw(SW_USER_REJECTED);
     cancel_status();
 }
 
@@ -95,12 +92,12 @@ static void review_choice(bool confirm) {
 }
 
 static void continue_review(void) {
-    io_seproxyhal_touch_pk_ok();
+    send_pubkey();
     nbgl_useCaseAddressConfirmation(ctx->fullStr, review_choice);
 }
 #endif
 
-static unsigned int io_seproxyhal_touch_pk_ok(void) {
+static unsigned int send_pubkey(void) {
     uint8_t publicKey[65] = {0};
 
     // The response APDU will contain multiple objects, which means we need to
@@ -137,15 +134,9 @@ static unsigned int io_seproxyhal_touch_pk_ok(void) {
     return 0;
 }
 
-void handleGetPublicKey(uint8_t p1,
-                        uint8_t p2,
-                        uint8_t* buffer,
-                        uint16_t len,
-                        /* out */ volatile unsigned int* flags,
-                        /* out */ volatile unsigned int* tx) {
+void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len) {
     UNUSED(p1);
     UNUSED(len);
-    UNUSED(tx);
 
     if ((p2 != P2_DISPLAY_ADDRESS) && (p2 != P2_DISPLAY_PUBKEY)) {
         // Although THROW is technically a general-purpose exception
@@ -185,6 +176,4 @@ void handleGetPublicKey(uint8_t p1,
                             continue_review,
                             confirm_address_rejection);
 #endif
-
-    *flags |= IO_ASYNCH_REPLY;
 }
