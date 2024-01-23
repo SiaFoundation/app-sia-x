@@ -56,7 +56,7 @@ UX_STEP_VALID(ux_approve_pk_flow_2_step,
               io_seproxyhal_touch_pk_ok(),
               {&C_icon_validate_14, "Approve"});
 
-UX_STEP_VALID(ux_approve_pk_flow_3_step, pb, io_seproxyhal_cancel(), {&C_icon_crossmark, "Reject"});
+UX_STEP_VALID(ux_approve_pk_flow_3_step, pb, io_reject(), {&C_icon_crossmark, "Reject"});
 
 // Flow for the public key/address menu:
 // #1 screen: "generate address/public key from key #x?"

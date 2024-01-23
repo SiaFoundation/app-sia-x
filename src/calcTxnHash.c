@@ -53,7 +53,7 @@ UX_STEP_VALID(ux_sign_txn_flow_2_step,
               io_seproxyhal_touch_txn_hash_ok(),
               {&C_icon_validate_14, "Approve"});
 
-UX_STEP_VALID(ux_sign_txn_flow_3_step, pb, io_seproxyhal_cancel(), {&C_icon_crossmark, "Reject"});
+UX_STEP_VALID(ux_sign_txn_flow_3_step, pb, io_reject(), {&C_icon_crossmark, "Reject"});
 
 // Flow for the signing transaction menu:
 // #1 screen: "Sign this txn?"
