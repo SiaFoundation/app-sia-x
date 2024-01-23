@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <io.h>
 
 #include "blake2b.h"
 #include "sia.h"
@@ -57,10 +58,7 @@ UX_STEP_VALID(ux_approve_hash_flow_2_step,
               io_seproxyhal_touch_hash_ok(),
               {&C_icon_validate_14, "Approve"});
 
-UX_STEP_VALID(ux_approve_hash_flow_3_step,
-              pb,
-              io_reject(),
-              {&C_icon_crossmark, "Reject"});
+UX_STEP_VALID(ux_approve_hash_flow_3_step, pb, io_reject(), {&C_icon_crossmark, "Reject"});
 
 // Flow for the signing hash menu:
 // #1 screen: the hash repeated for confirmation
@@ -78,7 +76,7 @@ static void io_seproxyhal_touch_hash_ok_void(void) {
 
 static void sign_rejection(void) {
     // display a status page and go back to main
-    io_exchange_with_code(SW_USER_REJECTED, 0);
+    io_send_sw(SW_USER_REJECTED);
     nbgl_useCaseStatus("Signing Cancelled", false, ui_idle);
 }
 #endif
@@ -86,9 +84,7 @@ static void sign_rejection(void) {
 void handleSignHash(uint8_t p1 __attribute__((unused)),
                     uint8_t p2 __attribute__((unused)),
                     uint8_t *buffer,
-                    uint16_t len,
-                    /* out */ volatile unsigned int *flags,
-                    /* out */ volatile unsigned int *tx __attribute__((unused))) {
+                    uint16_t len) {
     if (len != sizeof(uint32_t) + SIA_HASH_SIZE) {
         THROW(SW_INVALID_PARAM);
     }
@@ -115,8 +111,6 @@ void handleSignHash(uint8_t p1 __attribute__((unused)),
                             io_seproxyhal_touch_hash_ok_void,
                             sign_rejection);
 #endif
-
-    *flags |= IO_ASYNCH_REPLY;
 }
 
 // Now that we've seen the individual pieces, we can construct a full picture
