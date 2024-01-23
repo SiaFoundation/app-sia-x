@@ -59,7 +59,7 @@ UX_STEP_VALID(ux_approve_hash_flow_2_step,
 
 UX_STEP_VALID(ux_approve_hash_flow_3_step,
               pb,
-              io_seproxyhal_cancel(),
+              io_reject(),
               {&C_icon_crossmark, "Reject"});
 
 // Flow for the signing hash menu:
