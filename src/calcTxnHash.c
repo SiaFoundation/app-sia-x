@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ux.h>
+#include <io.h>
 
 #include "blake2b.h"
 #include "sia.h"
@@ -184,7 +185,7 @@ static void fmtTxnElem(void) {
         }
         default: {
             // This should never happen.
-            io_exchange_with_code(SW_DEVELOPER_ERR, 0);
+            io_send_sw(SW_DEVELOPER_ERR);
             ui_idle();
             break;
         }
@@ -199,12 +200,7 @@ static void zero_ctx(void) {
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
 // piece-wise to the user.
-void handleCalcTxnHash(uint8_t p1,
-                       uint8_t p2,
-                       uint8_t *dataBuffer,
-                       uint16_t dataLength,
-                       volatile unsigned int *flags,
-                       volatile unsigned int *tx __attribute__((unused))) {
+void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
     if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
         THROW(SW_INVALID_PARAM);
     }
@@ -265,7 +261,6 @@ void handleCalcTxnHash(uint8_t p1,
             THROW(SW_OK);
             break;
         case TXN_STATE_FINISHED:
-            *flags |= IO_ASYNCH_REPLY;
             fmtTxnElem();
             ux_flow_init(0, ux_show_txn_elem_flow, NULL);
             break;

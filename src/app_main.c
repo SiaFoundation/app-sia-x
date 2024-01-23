@@ -109,6 +109,7 @@
 #include <stdint.h>
 #include <io.h>
 #include <ux.h>
+#include <parser.h>
 
 #include "blake2b.h"
 #include "sia.h"
@@ -197,18 +198,12 @@ void ui_menu_about(void) {
 
 #endif
 
-// io_exchange_with_code is a helper function for sending response APDUs from
-// button handlers. Note that the IO_RETURN_AFTER_TX flag is set. 'tx' is the
-// conventional name for the size of the response APDU, i.e. the write-offset
-// within G_io_apdu_buffer.
 void io_exchange_with_code(uint16_t code, uint16_t tx) {
-    G_io_apdu_buffer[tx++] = code >> 8;
-    G_io_apdu_buffer[tx++] = code & 0xFF;
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+    io_send_sw(code);
 }
 
 unsigned int io_reject(void) {
-    io_exchange_with_code(SW_USER_REJECTED, 0);
+    io_send_sw(SW_USER_REJECTED);
     // Return to the main screen.
     ui_idle();
     return 0;
@@ -226,12 +221,7 @@ unsigned int io_reject(void) {
 // out-parameters that will control the behavior of the next io_exchange call
 // in sia_main. It's common to set *flags |= IO_ASYNC_REPLY, but tx is
 // typically unused unless the handler is immediately sending a response APDU.
-typedef void handler_fn_t(uint8_t p1,
-                          uint8_t p2,
-                          uint8_t *dataBuffer,
-                          uint16_t dataLength,
-                          volatile unsigned int *flags,
-                          volatile unsigned int *tx);
+typedef void handler_fn_t(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength);
 
 handler_fn_t handleGetVersion;
 handler_fn_t handleGetPublicKey;
@@ -281,18 +271,8 @@ void app_main() {
 
     ui_idle();
 
-    // This is the main loop that reads and writes APDUs. It receives request
-    // APDUs from the computer, looks up the corresponding command handler, and
-    // calls it on the APDU payload. Then it loops around and calls io_exchange
-    // again. The handler may set the 'flags' and 'tx' variables, which affect the
-    // subsequent io_exchange call. The handler may also throw an exception, which
-    // will be caught, converted to an error code, appended to the response APDU,
-    // and sent in the next io_exchange call.
-    volatile unsigned int rx = 0;
-    volatile unsigned int tx = 0;
-    volatile unsigned int flags = 0;
-
-    // Exchange APDUs until EXCEPTION_IO_RESET is thrown.
+    int input_len = 0;
+    command_t cmd = {0};
     for (;;) {
         volatile unsigned short sw = 0;
 
@@ -306,21 +286,21 @@ void app_main() {
         // "true" main function defined at the bottom of this file.
         BEGIN_TRY {
             TRY {
-                rx = tx;
-                tx = 0;  // ensure no race in CATCH_OTHER if io_exchange throws an error
-                rx = io_exchange(CHANNEL_APDU | flags, rx);
-                flags = 0;
+                // Read command into G_io_apdu_buffer
+                if ((input_len = io_recv_command()) < 0) {
+                    PRINTF("Failed to receive");
+                    return;
+                }
 
-                // No APDU received; trigger a reset.
-                if (rx == 0) {
-                    THROW(EXCEPTION_IO_RESET);
+                // Parse command into CLA, INS, P1/P2, LC, and data
+                if (!apdu_parser(&cmd, G_io_apdu_buffer, input_len)) {
+                    PRINTF("Invalid command length");
+                    io_send_sw(SW_INVALID_PARAM);
+                    continue;
                 }
-                // Malformed APDU.
-                if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
-                    THROW(0x6E00);
-                }
+
                 // Lookup and call the requested command handler.
-                handler_fn_t *handlerFn = lookupHandler(G_io_apdu_buffer[OFFSET_INS]);
+                handler_fn_t *handlerFn = lookupHandler(cmd.ins);
                 if (!handlerFn) {
                     THROW(0x6D00);
                 }
@@ -333,12 +313,7 @@ void app_main() {
                 ux_layout_paging_reset();
 #endif
 
-                handlerFn(G_io_apdu_buffer[OFFSET_P1],
-                          G_io_apdu_buffer[OFFSET_P2],
-                          G_io_apdu_buffer + OFFSET_CDATA,
-                          G_io_apdu_buffer[OFFSET_LC],
-                          &flags,
-                          &tx);
+                handlerFn(cmd.p1, cmd.p2, cmd.data, cmd.lc);
             }
             CATCH(EXCEPTION_IO_RESET) {
                 THROW(EXCEPTION_IO_RESET);
@@ -365,8 +340,7 @@ void app_main() {
                         sw = 0x6800 | (e & 0x7FF);
                         break;
                 }
-                G_io_apdu_buffer[tx++] = sw >> 8;
-                G_io_apdu_buffer[tx++] = sw & 0xFF;
+                io_send_sw(sw);
             }
             FINALLY {
             }
