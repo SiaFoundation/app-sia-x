@@ -1,5 +1,6 @@
 #ifndef HAVE_BAGL
 
+#include <io.h>
 #include <os.h>
 #include <os_io_seproxyhal.h>
 #include <stdbool.h>
@@ -88,12 +89,12 @@ static void confirm_callback(bool confirm) {
 
     if (confirm) {
         if (ctx->sign) {
-            deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
-            io_exchange_with_code(SW_OK, 64);
+            uint8_t signature[64] = {0};
+            deriveAndSign(signature, ctx->keyIndex, ctx->txn.sigHash);
+            io_send_response_pointer(signature, sizeof(signature), SW_OK);
             nbgl_useCaseStatus("TRANSACTION SIGNED", true, ui_idle);
         } else {
-            memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
-            io_exchange_with_code(SW_OK, 32);
+            io_send_response_pointer(ctx->txn.sigHash, sizeof(ctx->txn.sigHash), SW_OK);
             nbgl_useCaseStatus("TRANSACTION HASHED", true, ui_idle);
         }
     } else {

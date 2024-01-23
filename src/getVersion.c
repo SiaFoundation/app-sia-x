@@ -18,9 +18,5 @@ void handleGetVersion(uint8_t p1 __attribute__((unused)),
     static const uint8_t appVersion[3] = {APPVERSION[0] - '0',
                                           APPVERSION[2] - '0',
                                           APPVERSION[4] - '0'};
-
-    buffer_t buffer = {0};
-    buffer.ptr = appVersion;
-    buffer.size = sizeof(appVersion);
-    io_send_response_buffers(&buffer, 1, SW_OK);
+    io_send_response_pointer(appVersion, sizeof(appVersion), SW_OK);
 }

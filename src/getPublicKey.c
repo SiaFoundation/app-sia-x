@@ -19,10 +19,12 @@
 // Keep this description in mind as you read through the implementation.
 
 #include <os.h>
+#include <io.h>
 #include <os_io_seproxyhal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <buffer.h>
 
 #include "blake2b.h"
 #include "sia.h"
@@ -100,31 +102,30 @@ static void continue_review(void) {
 static unsigned int send_pubkey(void) {
     uint8_t publicKey[65] = {0};
 
-    // The response APDU will contain multiple objects, which means we need to
-    // remember our offset within G_io_apdu_buffer. By convention, the offset
-    // variable is named 'tx'.
-    uint8_t tx = 0;
-
     deriveSiaPublicKey(ctx->keyIndex, publicKey);
-    extractPubkeyBytes(G_io_apdu_buffer + tx, publicKey);
-    tx += 32;
-    pubkeyToSiaAddress((char*) G_io_apdu_buffer + tx, publicKey);
-    tx += 76;
+
+    uint8_t pubkeyBytes[32] = {0};
+    extractPubkeyBytes(pubkeyBytes, publicKey);
+    uint8_t siaAddress[76 + 1] = {0};
+    pubkeyToSiaAddress((char*) siaAddress, publicKey);
 
     // Flush the APDU buffer, sending the response.
-    io_exchange_with_code(SW_OK, tx);
+    const buffer_t bufs[2] = {
+        {.ptr = pubkeyBytes, .size = 32, .offset = 0},
+        {.ptr = siaAddress, .size = 76, .offset = 0},
+    };
+    io_send_response_buffers(bufs, sizeof(bufs) / sizeof(bufs[0]), SW_OK);
 
     // Prepare the comparison screen, filling in the header and body text.
     memmove(ctx->typeStr, "Compare:", 9);
     if (ctx->genAddr) {
         // The APDU buffer already contains the hex-encoded address, so
         // copy it directly.
-        memmove(ctx->fullStr, G_io_apdu_buffer + 32, 76);
-        ctx->fullStr[76] = '\0';
+        memcpy(ctx->fullStr, siaAddress, sizeof(siaAddress));
     } else {
         // The APDU buffer contains the raw bytes of the public key, so
         // first we need to convert to a human-readable form.
-        bin2hex(ctx->fullStr, G_io_apdu_buffer, 32);
+        bin2hex(ctx->fullStr, pubkeyBytes, 32);
     }
 
 #ifdef HAVE_BAGL
