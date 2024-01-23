@@ -51,7 +51,7 @@ UX_STEP_NOCB(ux_sign_txn_flow_1_step, nn, {"Sign this txn", global.calcTxnHashCo
 UX_STEP_VALID(ux_sign_txn_flow_2_step,
               pb,
               io_seproxyhal_touch_txn_hash_ok(),
-              {&C_icon_validate, "Approve"});
+              {&C_icon_validate_14, "Approve"});
 
 UX_STEP_VALID(ux_sign_txn_flow_3_step, pb, io_seproxyhal_cancel(), {&C_icon_crossmark, "Reject"});
 
