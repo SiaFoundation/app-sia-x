@@ -207,7 +207,7 @@ void io_exchange_with_code(uint16_t code, uint16_t tx) {
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
 }
 
-unsigned int io_seproxyhal_cancel(void) {
+unsigned int io_reject(void) {
     io_exchange_with_code(SW_USER_REJECTED, 0);
     // Return to the main screen.
     ui_idle();
@@ -271,80 +271,6 @@ static handler_fn_t *lookupHandler(uint8_t ins) {
 //
 // Next, we'll look at how the various commands are implemented. We'll start
 // with the simplest command, signHash.c.
-
-// override point, but nothing more to do
-#ifdef HAVE_BAGL
-void io_seproxyhal_display(const bagl_element_t *element) {
-    io_seproxyhal_display_default((bagl_element_t *) element);
-}
-#endif
-
-uint8_t io_event(uint8_t channel) {
-    UNUSED(channel);
-
-    switch (G_io_seproxyhal_spi_buffer[0]) {
-        case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
-#ifdef HAVE_BAGL
-            UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
-#endif  // HAVE_BAGL
-            break;
-        case SEPROXYHAL_TAG_STATUS_EVENT:
-            if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&  //
-                !(U4BE(G_io_seproxyhal_spi_buffer, 3) &      //
-                  SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
-                THROW(EXCEPTION_IO_RESET);
-            }
-            __attribute__((fallthrough));
-        case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
-#ifdef HAVE_BAGL
-            UX_DISPLAYED_EVENT({});
-#endif  // HAVE_BAGL
-#ifdef HAVE_NBGL
-            UX_DEFAULT_EVENT();
-#endif  // HAVE_NBGL
-            break;
-#ifdef HAVE_NBGL
-        case SEPROXYHAL_TAG_FINGER_EVENT:
-            UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
-            break;
-#endif  // HAVE_NBGL
-        case SEPROXYHAL_TAG_TICKER_EVENT:
-            UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
-            break;
-        default:
-            UX_DEFAULT_EVENT();
-            break;
-    }
-
-    if (!io_seproxyhal_spi_is_status_sent()) {
-        io_seproxyhal_general_status();
-    }
-
-    return 1;
-}
-
-uint16_t io_exchange_al(uint8_t channel, uint16_t tx_len) {
-    switch (channel & ~(IO_FLAGS)) {
-        case CHANNEL_KEYBOARD:
-            break;
-        case CHANNEL_SPI:
-            if (tx_len) {
-                io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
-
-                if (channel & IO_RESET_AFTER_REPLIED) {
-                    halt();
-                }
-
-                return 0;
-            } else {
-                return io_seproxyhal_spi_recv(G_io_apdu_buffer, sizeof(G_io_apdu_buffer), 0);
-            }
-        default:
-            THROW(INVALID_PARAMETER);
-    }
-
-    return 0;
-}
 
 void app_main() {
     // Mark the transaction context as uninitialized.
