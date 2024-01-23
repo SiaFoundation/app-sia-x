@@ -55,7 +55,7 @@ UX_STEP_NOCB(ux_approve_hash_flow_1_step,
 UX_STEP_VALID(ux_approve_hash_flow_2_step,
               pb,
               io_seproxyhal_touch_hash_ok(),
-              {&C_icon_validate, "Approve"});
+              {&C_icon_validate_14, "Approve"});
 
 UX_STEP_VALID(ux_approve_hash_flow_3_step,
               pb,
