@@ -198,10 +198,6 @@ void ui_menu_about(void) {
 
 #endif
 
-void io_exchange_with_code(uint16_t code, uint16_t tx) {
-    io_send_sw(code);
-}
-
 unsigned int io_reject(void) {
     io_send_sw(SW_USER_REJECTED);
     // Return to the main screen.
@@ -289,7 +285,8 @@ void app_main() {
                 // Read command into G_io_apdu_buffer
                 if ((input_len = io_recv_command()) < 0) {
                     PRINTF("Failed to receive");
-                    return;
+                    io_send_sw(SW_INVALID_PARAM);
+                    continue;
                 }
 
                 // Parse command into CLA, INS, P1/P2, LC, and data

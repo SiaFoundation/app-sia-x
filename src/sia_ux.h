@@ -64,12 +64,6 @@ void ui_idle(void);
 // about submenu of the main screen
 void ui_menu_about(void);
 
-// io_exchange_with_code is a helper function for sending APDUs, primarily
-// from button handlers. It appends code to G_io_apdu_buffer and calls
-// io_exchange with the IO_RETURN_AFTER_TX flag. tx is the current offset
-// within G_io_apdu_buffer (before the code is appended).
-void io_exchange_with_code(uint16_t code, uint16_t tx);
-
 // standard "reject" function so we don't repeat code
 unsigned int io_reject(void);
 

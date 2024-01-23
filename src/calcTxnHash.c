@@ -78,8 +78,9 @@ UX_STEP_CB(ux_show_txn_elem_1_step,
 // they finish all the elements and are given the option to approve/reject.
 UX_FLOW(ux_show_txn_elem_flow, &ux_show_txn_elem_1_step);
 static unsigned int io_seproxyhal_touch_txn_hash_ok(void) {
-    deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->txn.sigHash);
-    io_exchange_with_code(SW_OK, 64);
+    uint8_t signature[64] = {0};
+    deriveAndSign(signature, ctx->keyIndex, ctx->txn.sigHash);
+    io_send_response_pointer(signature, sizeof(signature), SW_OK);
     ui_idle();
     return 0;
 }
@@ -97,8 +98,7 @@ static unsigned int ui_calcTxnHash_elem_button(void) {
         } else {
             // If we're just computing the hash, send it immediately and
             // display the comparison screen
-            memmove(G_io_apdu_buffer, ctx->txn.sigHash, 32);
-            io_exchange_with_code(SW_OK, 32);
+            io_send_response_pointer(ctx->txn.sigHash, sizeof(ctx->txn.sigHash), SW_OK);
             bin2hex(ctx->fullStr[0], ctx->txn.sigHash, sizeof(ctx->txn.sigHash));
             ux_flow_init(0, ux_compare_hash_flow, NULL);
         }

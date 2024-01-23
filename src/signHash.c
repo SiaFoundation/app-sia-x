@@ -36,8 +36,9 @@ static unsigned int io_seproxyhal_touch_hash_ok(void) {
     // Derive the secret key and sign the hash, storing the signature in
     // the APDU buffer. This is the first Sia-specific function we've
     // encountered; it is defined in sia.c.
-    deriveAndSign(G_io_apdu_buffer, ctx->keyIndex, ctx->hash);
-    io_exchange_with_code(SW_OK, 64);
+    uint8_t signature[64] = {0};
+    deriveAndSign(signature, ctx->keyIndex, ctx->hash);
+    io_send_response_pointer(signature, sizeof(signature), SW_OK);
 
 #ifdef HAVE_BAGL
     ui_idle();
