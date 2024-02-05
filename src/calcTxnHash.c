@@ -200,9 +200,9 @@ static void zero_ctx(void) {
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is processed in a streaming fashion and displayed
 // piece-wise to the user.
-void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
+uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
     if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
-        THROW(SW_INVALID_PARAM);
+        return SW_INVALID_PARAM;
     }
 
     if (p1 == P1_FIRST) {
@@ -213,7 +213,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         // NOTE: ctx->initialized is set to false when the Sia app loads.
         if (ctx->initialized) {
             zero_ctx();
-            THROW(SW_IMPROPER_INIT);
+            return SW_IMPROPER_INIT;
         }
         zero_ctx();
         ctx->initialized = true;
@@ -241,7 +241,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         // initialized previously.
         if (!ctx->initialized) {
             zero_ctx();
-            THROW(SW_IMPROPER_INIT);
+            return SW_IMPROPER_INIT;
         }
     }
 
@@ -255,10 +255,10 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
         case TXN_STATE_ERR:
             // don't leave state lingering
             zero_ctx();
-            THROW(SW_INVALID_PARAM);
+            return SW_INVALID_PARAM;
             break;
         case TXN_STATE_PARTIAL:
-            THROW(SW_OK);
+            return SW_OK;
             break;
         case TXN_STATE_FINISHED:
             fmtTxnElem();
@@ -266,6 +266,7 @@ void handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dat
             break;
     }
 
+    return 0;
     // The above code does something strange: it calls io_exchange
     // directly from the command handler. You might wonder: why not
     // just prepare the APDU buffer and let sia_main call io_exchange?
