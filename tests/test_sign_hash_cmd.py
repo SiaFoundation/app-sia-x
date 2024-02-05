@@ -32,8 +32,13 @@ def test_sign_hash_accept(firmware, backend, navigator, test_name):
                 test_name,
             )
         else:
+            instructions = [
+                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.USE_CASE_REVIEW_CONFIRM,
+            ]
             navigator.navigate_and_compare(
-                ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_REVIEW_TAP]
+                ROOT_SCREENSHOT_PATH, test_name, instructions,
             )
 
     response = client.get_async_response()
