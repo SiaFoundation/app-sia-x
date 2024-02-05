@@ -135,19 +135,12 @@ static unsigned int send_pubkey(void) {
     return 0;
 }
 
-void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len) {
+uint16_t handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len) {
     UNUSED(p1);
     UNUSED(len);
 
     if ((p2 != P2_DISPLAY_ADDRESS) && (p2 != P2_DISPLAY_PUBKEY)) {
-        // Although THROW is technically a general-purpose exception
-        // mechanism, within a command handler it is basically just a
-        // convenient way of bailing out early and sending an error code to
-        // the computer. The exception will be caught by sia_main, which
-        // appends the code to the response APDU and sends it, much like
-        // io_exchange_with_code. THROW should not be called from
-        // preprocessors or button handlers.
-        THROW(SW_INVALID_PARAM);
+        return SW_INVALID_PARAM;
     }
 
     // Read Key Index
@@ -177,4 +170,6 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len) {
                             continue_review,
                             confirm_address_rejection);
 #endif
+
+    return 0;
 }

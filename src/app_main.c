@@ -213,11 +213,9 @@ unsigned int io_reject(void) {
 #define INS_SIGN_HASH      0x04
 #define INS_GET_TXN_HASH   0x08
 
-// This is the function signature for a command handler. 'flags' and 'tx' are
-// out-parameters that will control the behavior of the next io_exchange call
-// in sia_main. It's common to set *flags |= IO_ASYNC_REPLY, but tx is
-// typically unused unless the handler is immediately sending a response APDU.
-typedef void handler_fn_t(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength);
+// This is the function signature for a command handler.
+// Returns 0 on success.
+typedef uint16_t handler_fn_t(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength);
 
 handler_fn_t handleGetVersion;
 handler_fn_t handleGetPublicKey;
@@ -258,6 +256,32 @@ static handler_fn_t *lookupHandler(uint8_t ins) {
 // Next, we'll look at how the various commands are implemented. We'll start
 // with the simplest command, signHash.c.
 
+void send_error_code(uint16_t e) {
+    // Convert the exception to a response code. All error codes
+    // start with 6, except for 0x9000, which is a special
+    // "success" code. Every APDU payload should end with such a
+    // code, even if no other data is sent. For example, when
+    // calcTxnHash is processing packets of txn data, it replies
+    // with just 0x9000 to indicate that it is ready to receive
+    // more data.
+    //
+    // If the first byte is not a 6, mask it with 0x6800 to
+    // convert it to a proper error code. I'm not totally sure why
+    // this is done; perhaps to handle single-byte exception
+    // codes?
+    short sw = 0;
+    switch (e & 0xF000) {
+        case 0x6000:
+        case 0x9000:
+            sw = e;
+            break;
+        default:
+            sw = 0x6800 | (e & 0x7FF);
+            break;
+    }
+    io_send_sw(sw);
+}
+
 void app_main() {
     // Mark the transaction context as uninitialized.
     explicit_bzero(&global, sizeof(global));
@@ -270,78 +294,40 @@ void app_main() {
     int input_len = 0;
     command_t cmd = {0};
     for (;;) {
-        volatile unsigned short sw = 0;
+        // Read command into G_io_apdu_buffer
+        if ((input_len = io_recv_command()) < 0) {
+            PRINTF("Failed to receive");
+            io_send_sw(SW_INVALID_PARAM);
+            continue;
+        }
 
-        // The Ledger SDK implements a form of exception handling. In addition
-        // to explicit THROWs in user code, syscalls (prefixed with os_ or
-        // cx_) may also throw exceptions.
-        //
-        // In sia_main, this TRY block serves to catch any thrown exceptions
-        // and convert them to response codes, which are then sent in APDUs.
-        // However, EXCEPTION_IO_RESET will be re-thrown and caught by the
-        // "true" main function defined at the bottom of this file.
-        BEGIN_TRY {
-            TRY {
-                // Read command into G_io_apdu_buffer
-                if ((input_len = io_recv_command()) < 0) {
-                    PRINTF("Failed to receive");
-                    io_send_sw(SW_INVALID_PARAM);
-                    continue;
-                }
+        // Parse command into CLA, INS, P1/P2, LC, and data
+        if (!apdu_parser(&cmd, G_io_apdu_buffer, input_len)) {
+            PRINTF("Invalid command length");
+            io_send_sw(SW_INVALID_PARAM);
+            continue;
+        }
 
-                // Parse command into CLA, INS, P1/P2, LC, and data
-                if (!apdu_parser(&cmd, G_io_apdu_buffer, input_len)) {
-                    PRINTF("Invalid command length");
-                    io_send_sw(SW_INVALID_PARAM);
-                    continue;
-                }
-
-                // Lookup and call the requested command handler.
-                handler_fn_t *handlerFn = lookupHandler(cmd.ins);
-                if (!handlerFn) {
-                    THROW(0x6D00);
-                }
+        // Lookup and call the requested command handler.
+        handler_fn_t *handlerFn = lookupHandler(cmd.ins);
+        if (!handlerFn) {
+            PRINTF("Instruction not supported");
+            send_error_code(SW_INS_NOT_SUPPORTED);
+            continue;
+        }
 
 // without calling this, pagination will always begin on the last page if a paginated menu has been
 // scrolled through before during the session
 #ifdef TARGET_NANOX
-                ux_layout_bnnn_paging_reset();
+        ux_layout_bnnn_paging_reset();
 #elif defined(HAVE_BAGL)
-                ux_layout_paging_reset();
+        ux_layout_paging_reset();
 #endif
 
-                handlerFn(cmd.p1, cmd.p2, cmd.data, cmd.lc);
-            }
-            CATCH(EXCEPTION_IO_RESET) {
-                THROW(EXCEPTION_IO_RESET);
-            }
-            CATCH_OTHER(e) {
-                // Convert the exception to a response code. All error codes
-                // start with 6, except for 0x9000, which is a special
-                // "success" code. Every APDU payload should end with such a
-                // code, even if no other data is sent. For example, when
-                // calcTxnHash is processing packets of txn data, it replies
-                // with just 0x9000 to indicate that it is ready to receive
-                // more data.
-                //
-                // If the first byte is not a 6, mask it with 0x6800 to
-                // convert it to a proper error code. I'm not totally sure why
-                // this is done; perhaps to handle single-byte exception
-                // codes?
-                switch (e & 0xF000) {
-                    case 0x6000:
-                    case 0x9000:
-                        sw = e;
-                        break;
-                    default:
-                        sw = 0x6800 | (e & 0x7FF);
-                        break;
-                }
-                io_send_sw(sw);
-            }
-            FINALLY {
-            }
+        const uint16_t e = handlerFn(cmd.p1, cmd.p2, cmd.data, cmd.lc);
+        if (e != 0) {
+            send_error_code(e);
+            continue;
         }
-        END_TRY;
     }
 }

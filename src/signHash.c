@@ -103,12 +103,12 @@ static void begin_review(void) {
 
 #endif
 
-void handleSignHash(uint8_t p1 __attribute__((unused)),
-                    uint8_t p2 __attribute__((unused)),
-                    uint8_t *buffer,
-                    uint16_t len) {
+uint16_t handleSignHash(uint8_t p1 __attribute__((unused)),
+                        uint8_t p2 __attribute__((unused)),
+                        uint8_t *buffer,
+                        uint16_t len) {
     if (len != sizeof(uint32_t) + SIA_HASH_SIZE) {
-        THROW(SW_INVALID_PARAM);
+        return SW_INVALID_PARAM;
     }
 
     // Read the index of the signing key. U4LE is a helper macro for
@@ -135,6 +135,8 @@ void handleSignHash(uint8_t p1 __attribute__((unused)),
                             begin_review,
                             cancel_review);
 #endif
+
+    return 0;
 }
 
 // Now that we've seen the individual pieces, we can construct a full picture
