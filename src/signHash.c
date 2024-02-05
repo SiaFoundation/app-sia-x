@@ -71,15 +71,36 @@ UX_FLOW(ux_approve_hash_flow,
         &ux_approve_hash_flow_3_step);
 #else
 
-static void io_seproxyhal_touch_hash_ok_void(void) {
-    io_seproxyhal_touch_hash_ok();
-}
-
-static void sign_rejection(void) {
+static void cancel_review(void) {
     // display a status page and go back to main
     io_send_sw(SW_USER_REJECTED);
     nbgl_useCaseStatus("Signing Cancelled", false, ui_idle);
 }
+
+static void confirm_callback(bool confirm) {
+    if (confirm) {
+        io_seproxyhal_touch_hash_ok();
+    } else {
+        cancel_review();
+    }
+}
+
+static void begin_review(void) {
+    nbgl_layoutTagValue_t pair = {0};
+    pair.item = "Hash";
+    pair.value = ctx->hexHash;
+
+    nbgl_layoutTagValueList_t tagValueList = {0};
+    tagValueList.nbPairs = 1;
+    tagValueList.pairs = &pair;
+
+    nbgl_pageInfoLongPress_t longPress = {0};
+    longPress.text = "Sign hash";
+    longPress.longPressText = "Hold to sign";
+
+    nbgl_useCaseStaticReview(&tagValueList, &longPress, "Cancel", confirm_callback);
+}
+
 #endif
 
 void handleSignHash(uint8_t p1 __attribute__((unused)),
@@ -104,13 +125,15 @@ void handleSignHash(uint8_t p1 __attribute__((unused)),
 #ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_hash_flow, NULL);
 #else
+
     snprintf(ctx->typeStr, sizeof(ctx->typeStr), "Sign Hash with Key %d?", ctx->keyIndex);
+
     nbgl_useCaseReviewStart(&C_stax_app_sia,
                             ctx->typeStr,
-                            ctx->hexHash,
+                            NULL,
                             "Cancel",
-                            io_seproxyhal_touch_hash_ok_void,
-                            sign_rejection);
+                            begin_review,
+                            cancel_review);
 #endif
 }
 
