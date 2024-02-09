@@ -138,39 +138,3 @@ uint16_t handleSignHash(uint8_t p1 __attribute__((unused)),
 
     return 0;
 }
-
-// Now that we've seen the individual pieces, we can construct a full picture
-// of what the signHash command looks like.
-//
-// The command begins when sia_main reads an APDU packet from the computer
-// with INS == INS_SIGN_HASH. sia_main looks up the appropriate handler,
-// handleSignHash, and calls it. handleSignHash reads the command data,
-// prepares and displays the comparison screen, and sets the IO_ASYNC_REPLY
-// flag. Control returns to sia_main, which blocks when it reaches the
-// io_exchange call.
-//
-// UX_DISPLAY was called with the ui_prepro_signHash_compare preprocessor, so
-// that preprocessor is now called each time the compare screen is rendered.
-// Since we are initially displaying the beginning of the hash, the
-// preprocessor hides the left arrow. The user presses and holds the right
-// button, which triggers the button handler to advance the displayIndex every
-// 100ms. Each advance requires redisplaying the screen via UX_REDISPLAY(),
-// and thus rerunning the preprocessor. As soon as the right button is
-// pressed, the preprocessor detects that text has scrolled off the left side
-// of the screen, so it unhides the left arrow; when the end of the hash is
-// reached, it hides the right arrow.
-//
-// When the user has finished comparing the hashes, they press both buttons
-// together, triggering ui_signHash_compare_button to prepare the approval
-// screen and call UX_DISPLAY on ui_signHash_approve. A NULL preprocessor is
-// specified for this screen, since we don't need to filter out any of its
-// elements. We'll assume that the user presses the 'approve' button, causing
-// the button handler to place the hash in G_io_apdu_buffer and call
-// io_exchange_with_code, which sends the response APDU to the computer with
-// the IO_RETURN_AFTER_TX flag set. The button handler then calls ui_idle,
-// thus returning to the main menu.
-//
-// This completes the signHash command. Back in sia_main, io_exchange is still
-// blocked, waiting for the computer to send a new request APDU. For the next
-// section of this walkthrough, we will assume that the next APDU requests the
-// getPublicKey command, so proceed to getPublicKey.c.
