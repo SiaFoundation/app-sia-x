@@ -198,8 +198,7 @@ static void zero_ctx(void) {
 
 // handleCalcTxnHash reads a signature index and a transaction, calculates the
 // SigHash of the transaction, and optionally signs the hash using a specified
-// key. The transaction is processed in a streaming fashion and displayed
-// piece-wise to the user.
+// key. The transaction is displayed piece-wise to the user.
 uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
     if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
         return SW_INVALID_PARAM;
@@ -267,92 +266,6 @@ uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t
     }
 
     return 0;
-    // The above code does something strange: it calls io_exchange
-    // directly from the command handler. You might wonder: why not
-    // just prepare the APDU buffer and let sia_main call io_exchange?
-    // The answer, surprisingly, is that we also need to call
-    // UX_DISPLAY, and UX_DISPLAY affects io_exchange in subtle ways.
-    // To understand why, we'll need to dive deep into the Nano S
-    // firmware. I recommend that you don't skip this section, even
-    // though it's lengthy, because it will save you a lot of
-    // frustration when you go "off the beaten path" in your own app.
-    //
-    // Recall that the Nano S has two chips. Your app (and the Ledger
-    // OS, BOLOS) runs on the Secure Element. The SE is completely
-    // self-contained; it doesn't talk to the outside world at all. It
-    // only talks to the other chip, the MCU. The MCU is what
-    // processes button presses, renders things on screen, and
-    // exchanges APDU packets with the computer. The communication
-    // layer between the SE and the MCU is called SEPROXYHAL. There
-    // are some nice diagrams in the "Hardware Architecture" section
-    // of Ledger's docs that will help you visualize all this.
-    //
-    // The SEPROXYHAL protocol, like any communication protocol,
-    // specifies exactly when each party is allowed to talk.
-    // Communication happens in a loop: first the MCU sends an Event,
-    // then the SE replies with zero or more Commands, and finally the
-    // SE sends a Status to indicate that it has finished processing
-    // the Event, completing one iteration:
-    //
-    //    Event -> Commands -> Status -> Event -> Commands -> ...
-    //
-    // For our purposes, an "Event" is a request APDU, and a "Command"
-    // is a response APDU. (There are other types of Events and
-    // Commands, such as button presses, but they aren't relevant
-    // here.) As for the Status, there is a "General" Status and a
-    // "Display" Status. A General Status tells the MCU to send the
-    // response APDU, and a Display Status tells it to render an
-    // element on the screen. Remember, it's "zero or more Commands,"
-    // so it's legal to send just a Status without any Commands.
-    //
-    // You may have some picture of the problem now. Imagine we
-    // prepare the APDU buffer, then call UX_DISPLAY, and then let
-    // sia_main send the APDU with io_exchange. What happens at the
-    // SEPROXYHAL layer? First, UX_DISPLAY will send a Display Status.
-    // Then, io_exchange will send a Command and a General Status. But
-    // no Event was processed between the two Statuses! This causes
-    // SEPROXYHAL to freak out and crash, forcing you to reboot your
-    // Nano S.
-    //
-    // So why does calling io_exchange before UX_DISPLAY fix the
-    // problem? Won't we just end up sending two Statuses again? The
-    // secret is that io_exchange_with_code uses the
-    // IO_RETURN_AFTER_TX flag. Previously, the only thing we needed
-    // to know about IO_RETURN_AFTER_TX is that it sends a response
-    // APDU without waiting for the next request APDU. But it has one
-    // other important property: it tells io_exchange not to send a
-    // Status! So the only Status we send comes from UX_DISPLAY. This
-    // preserves the ordering required by SEPROXYHAL.
-    //
-    // Lastly: what if we prepare the APDU buffer in the handler, but
-    // with the IO_RETURN_AFTER_TX flag set? Will that work?
-    // Unfortunately not. io_exchange won't send a status, but it
-    // *will* send a Command containing the APDU, so we still end up
-    // breaking the correct SEPROXYHAL ordering.
-    //
-    // Here's a list of rules that will help you debug similar issues:
-    //
-    // - Always preserve the order: Event -> Commands -> Status
-    // - UX_DISPLAY sends a Status
-    // - io_exchange sends a Command and a Status
-    // - IO_RETURN_AFTER_TX makes io_exchange not send a Status
-    // - IO_ASYNCH_REPLY (or tx=0) makes io_exchange not send a Command
-    //
-    // Okay, that second rule isn't 100% accurate. UX_DISPLAY doesn't
-    // necessarily send a single Status: it sends a separate Status
-    // for each element you render! The reason this works is that the
-    // MCU replies to each Display Status with a Display Processed
-    // Event. That means you can call UX_DISPLAY many times in a row
-    // without disrupting SEPROXYHAL. Anyway, as far as we're
-    // concerned, it's simpler to think of UX_DISPLAY as sending just
-    // a single Status.
 }
 
-// It is not necessary to completely understand this handler to write your own
-// Nano S app; much of it is Sia-specific and will not generalize to other
-// apps. The important part is knowing how to structure handlers that involve
-// multiple APDU exchanges. If you would like to dive deeper into how the
-// handler buffers transaction data and parses elements, proceed to txn.c.
-// Otherwise, this concludes the walkthrough. Feel free to fork this app and
-// modify it to suit your own needs.
 #endif /* HAVE_BAGL */
