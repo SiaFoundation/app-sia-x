@@ -173,8 +173,7 @@ static void zero_ctx(void) {
 
 // handleCalcTxnHash reads a signature index and a transaction, calculates the
 // SigHash of the transaction, and optionally signs the hash using a specified
-// key. The transaction is processed in a streaming fashion and displayed
-// piece-wise to the user.
+// key. The transaction is displayed piece-wise to the user.
 uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
     if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
         return SW_INVALID_PARAM;
