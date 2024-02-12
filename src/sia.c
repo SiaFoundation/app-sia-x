@@ -1,47 +1,66 @@
 #include "sia.h"
 
 #include <cx.h>
+#include <ledger_assert.h>
+#include <lib_standard_app/crypto_helpers.h>
 #include <os.h>
+#include <os_seed.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "blake2b.h"
 
-void deriveSiaKeypair(uint32_t index, cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey) {
-    uint8_t keySeed[32];
-    cx_ecfp_private_key_t pk;
-
-    // bip32 path for 44'/93'/n'/0'/0'
-    uint32_t bip32Path[] = {44 | 0x80000000, 93 | 0x80000000, index | 0x80000000, 0x80000000, 0x80000000};
-    os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32Path, 5, keySeed, NULL, NULL, 0);
-
-    cx_ecfp_init_private_key(CX_CURVE_Ed25519, keySeed, sizeof(keySeed), &pk);
-    if (publicKey) {
-        cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, publicKey);
-        cx_ecfp_generate_pair(CX_CURVE_Ed25519, publicKey, &pk, 1);
-    }
-    if (privateKey) {
-        *privateKey = pk;
-    }
-    explicit_bzero(keySeed, sizeof(keySeed));
-    explicit_bzero(&pk, sizeof(pk));
+static void siaSetPath(uint32_t index, uint32_t path[static 5]) {
+    path[0] = 44 | 0x80000000;
+    path[1] = 93 | 0x80000000;
+    path[2] = index | 0x80000000;
+    path[3] = 0x80000000;
+    path[4] = 0x80000000;
 }
 
-void extractPubkeyBytes(unsigned char *dst, const cx_ecfp_public_key_t *publicKey) {
+void deriveSiaPublicKey(uint32_t index, uint8_t publicKey[static 65]) {
+    uint32_t bip32Path[5];
+    siaSetPath(index, bip32Path);
+
+    LEDGER_ASSERT(CX_OK == bip32_derive_with_seed_get_pubkey_256(HDW_ED25519_SLIP10,
+                                                                 CX_CURVE_Ed25519,
+                                                                 bip32Path,
+                                                                 5,
+                                                                 publicKey,
+                                                                 NULL,
+                                                                 CX_SHA512,
+                                                                 NULL,
+                                                                 0),
+                  "get pubkey failed");
+}
+
+void extractPubkeyBytes(unsigned char *dst, const uint8_t publicKey[static 65]) {
     for (int i = 0; i < 32; i++) {
-        dst[i] = publicKey->W[64 - i];
+        dst[i] = publicKey[64 - i];
     }
-    if (publicKey->W[32] & 1) {
+    if (publicKey[32] & 1) {
         dst[31] |= 0x80;
     }
 }
 
 void deriveAndSign(uint8_t *dst, uint32_t index, const uint8_t *hash) {
-    cx_ecfp_private_key_t privateKey;
-    deriveSiaKeypair(index, &privateKey, NULL);
-    cx_eddsa_sign(&privateKey, CX_RND_RFC6979 | CX_LAST, CX_SHA512, hash, 32, NULL, 0, dst, 64, NULL);
-    explicit_bzero(&privateKey, sizeof(privateKey));
+    uint32_t bip32Path[5];
+    siaSetPath(index, bip32Path);
+
+    size_t signatureLength = 64;
+    LEDGER_ASSERT(CX_OK == bip32_derive_with_seed_eddsa_sign_hash_256(HDW_ED25519_SLIP10,
+                                                                      CX_CURVE_Ed25519,
+                                                                      bip32Path,
+                                                                      5,
+                                                                      CX_SHA512,
+                                                                      hash,
+                                                                      32,
+                                                                      dst,
+                                                                      &signatureLength,
+                                                                      NULL,
+                                                                      0),
+                  "signing txn failed");
 }
 
 void bin2hex(char *dst, const uint8_t *data, uint64_t inlen) {
@@ -53,7 +72,7 @@ void bin2hex(char *dst, const uint8_t *data, uint64_t inlen) {
     dst[2 * inlen] = '\0';
 }
 
-void pubkeyToSiaAddress(char *dst, const cx_ecfp_public_key_t *publicKey) {
+void pubkeyToSiaAddress(char *dst, const uint8_t publicKey[static 65]) {
     // A Sia address is the Merkle root of a set of unlock conditions.
     // For a "standard" address, the unlock conditions are:
     //
