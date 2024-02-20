@@ -38,7 +38,7 @@ To learn more on how transactions are encoded, visit https://pkg.go.dev/go.sia.t
 
 ### GET_VERSION
 
-Returns public keys and addresses.
+Returns version of the app.
 
 #### Encoding
 
@@ -134,10 +134,10 @@ Sign a transaction or retrieve its hash.
 
 | Length  | Description  |
 | ---- | ---- |
-| 4 | Little endian encoded uint32 key index |
-| 2 | Little endian encoded uint16 signature index |
-| 4 | Little endian encoded uint32 change index |
-| At most 255-4-2-4=245 bytes | Sia-encoded transaction |
+| 4 | (first packet) Little endian encoded uint32 key index |
+| 2 | (first packet) Little endian encoded uint16 signature index |
+| 4 | (first packet) Little endian encoded uint32 change index |
+| At most 255-4-2-4=245 bytes for the first packet and 255 thereafter | Sia-encoded transaction |
 
 ##### Output data
 
