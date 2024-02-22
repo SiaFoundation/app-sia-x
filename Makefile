@@ -34,10 +34,10 @@ endif
 
 # The --path argument here restricts which BIP32 paths the app is allowed to derive.
 APP_LOAD_PARAMS = --path "44'/93'" --curve ed25519 $(COMMON_LOAD_PARAMS)
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-APP_LOAD_PARAMS += --appFlags 0x240
-else
+ifeq ($(TARGET_NAME),TARGET_NANOS)
 APP_LOAD_PARAMS += --appFlags 0x40
+else ifeq ($(TARGET_NAME),TARGET_NANOX)
+APP_LOAD_PARAMS += --appFlags 0x240
 endif
 
 APP_SOURCE_PATH += src
@@ -66,22 +66,19 @@ DEFINES += APPVERSION=\"$(APPVERSION)\"
 DEFINES += UNUSED\(x\)=\(void\)x
 
 ### Nano X
-ifeq ($(TARGET_NAME),TARGET_NANOX)
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+else ifeq ($(TARGET_NAME),TARGET_NANOX)
+DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 # bluetooth
 DEFINES += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
 DEFINES += HAVE_BLE_APDU
-SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
-endif
-
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=128
-else
-DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 # include fonts or ui will be empty
 DEFINES += HAVE_BAGL_ELLIPSIS
 DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
 DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
 DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
 endif
 
 ##############
@@ -94,7 +91,7 @@ CFLAGS += -O3 -Os
 AS := $(GCCPATH)arm-none-eabi-gcc
 LD := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS += -O3 -Os
-LDLIBS += -lm -lgcc -lc
+LDLIBS += -lm -lgcc -lc 
 
 ##################
 #  Dependencies  #
