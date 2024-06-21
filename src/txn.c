@@ -245,7 +245,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             txn->elementIndex++;
             if (txn->elementIndex < MAX_ELEMS) {
                 txn->elements[txn->elementIndex].elemType =
-                    txn->elements[txn->elementIndex-1].elemType;
+                    txn->elements[txn->elementIndex - 1].elemType;
             }
             return;
 
@@ -259,7 +259,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             txn->elementIndex++;
             if (txn->elementIndex < MAX_ELEMS) {
                 txn->elements[txn->elementIndex].elemType =
-                    txn->elements[txn->elementIndex-1].elemType;
+                    txn->elements[txn->elementIndex - 1].elemType;
             }
             return;
 
@@ -272,7 +272,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             txn->elementIndex++;
             if (txn->elementIndex < MAX_ELEMS) {
                 txn->elements[txn->elementIndex].elemType =
-                    txn->elements[txn->elementIndex-1].elemType;
+                    txn->elements[txn->elementIndex - 1].elemType;
             }
             return;
 
