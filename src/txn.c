@@ -242,9 +242,11 @@ static void __txn_next_elem(txn_state_t *txn) {
             }
 
             txn->sliceIndex++;
-            txn->elements[txn->elementIndex + 1].elemType =
-                txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
+            if (txn->elementIndex < MAX_ELEMS) {
+                txn->elements[txn->elementIndex].elemType =
+                    txn->elements[txn->elementIndex-1].elemType;
+            }
             return;
 
         case TXN_ELEM_SF_OUTPUT:
@@ -254,9 +256,11 @@ static void __txn_next_elem(txn_state_t *txn) {
             advance(txn);
 
             txn->sliceIndex++;
-            txn->elements[txn->elementIndex + 1].elemType =
-                txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
+            if (txn->elementIndex < MAX_ELEMS) {
+                txn->elements[txn->elementIndex].elemType =
+                    txn->elements[txn->elementIndex-1].elemType;
+            }
             return;
 
         case TXN_ELEM_MINER_FEE:
@@ -265,9 +269,11 @@ static void __txn_next_elem(txn_state_t *txn) {
             advance(txn);
 
             txn->sliceIndex++;
-            txn->elements[txn->elementIndex + 1].elemType =
-                txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
+            if (txn->elementIndex < MAX_ELEMS) {
+                txn->elements[txn->elementIndex].elemType =
+                    txn->elements[txn->elementIndex-1].elemType;
+            }
             return;
 
         // these elements should be decoded, but not displayed
