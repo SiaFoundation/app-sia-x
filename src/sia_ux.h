@@ -57,6 +57,14 @@ typedef union {
 } commandContext;
 extern commandContext global;
 
+typedef struct internalStorage_t {
+    bool blindSign;
+    bool initialized;
+} internalStorage_t;
+
+extern const internalStorage_t N_storage_real;
+#define N_storage (*(volatile internalStorage_t *) PIC(&N_storage_real))
+
 // ui_idle displays the main menu screen. Command handlers should call ui_idle
 // when they finish.
 void ui_idle(void);

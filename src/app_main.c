@@ -33,6 +33,7 @@
 // because multiple files include ux.h; they need to be defined in exactly one
 // place. See ux.h for their descriptions.
 commandContext global;
+const internalStorage_t N_storage_real;
 
 void ui_idle(void);
 void ui_menu_about(void);
@@ -73,15 +74,56 @@ void ui_menu_about(void) {
     ux_flow_init(0, ux_menu_about_flow, NULL);
 }
 #else
+
 static const char *const INFO_TYPES[] = {"Version", "Developer"};
 static const char *const INFO_CONTENTS[] = {APPVERSION, APPDEVELOPER};
 
+#define BLIND_SIGN_TOKEN 0
+static nbgl_contentSwitch_t BLIND_SIGN_SWITCH = {0};
+
+static void toggle_blind_sign(void) {
+    PRINTF("toggle_blind_sign\n");
+    const bool new_value = !N_storage.blindSign;
+    nvm_write((void *) &N_storage.blindSign, (void *) &new_value, sizeof(bool));
+}
+
+static void settings_callback(int token, uint8_t index) {
+    PRINTF("settings_callback: %d, %d\n", token, index);
+    if (token == BLIND_SIGN_TOKEN) {
+        toggle_blind_sign();
+    }
+}
+
 static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
-    UNUSED(page);
-    content->type = INFOS_LIST;
-    content->infosList.nbInfos = 2;
-    content->infosList.infoTypes = INFO_TYPES;
-    content->infosList.infoContents = INFO_CONTENTS;
+    PRINTF("nav_callback\n");
+
+    explicit_bzero(content, sizeof(nbgl_pageContent_t));
+    switch (page) {
+        case 0:
+            PRINTF("Info\n");
+            content->type = INFOS_LIST;
+            content->infosList.nbInfos = 2;
+            content->infosList.infoTypes = INFO_TYPES;
+            content->infosList.infoContents = INFO_CONTENTS;
+            break;
+        case 1:
+            PRINTF("Settings\n");
+            BLIND_SIGN_SWITCH.text = "Enable blind signing";
+            BLIND_SIGN_SWITCH.subText = "Recommended only for experienced users";
+            BLIND_SIGN_SWITCH.token = BLIND_SIGN_TOKEN;
+            BLIND_SIGN_SWITCH.tuneId = NBGL_NO_TUNE;
+            BLIND_SIGN_SWITCH.initState = N_storage.blindSign ? ON_STATE : OFF_STATE;
+
+            content->type = SWITCHES_LIST;
+            content->switchesList.nbSwitches = 1;
+            content->switchesList.switches = &BLIND_SIGN_SWITCH;
+            break;
+        default:
+            PRINTF("Other\n");
+            return false;
+            break;
+    }
+
     return true;
 }
 
@@ -95,7 +137,7 @@ void ui_idle(void) {
 }
 
 void ui_menu_about(void) {
-    nbgl_useCaseSettings(APPNAME, 0, 1, false, ui_idle, nav_callback, NULL);
+    nbgl_useCaseSettings(APPNAME, 0, 2, false, ui_idle, nav_callback, settings_callback);
 }
 
 #endif
@@ -184,6 +226,13 @@ void app_main() {
     io_init();
 
     ui_idle();
+
+    if (!N_storage.initialized) {
+        internalStorage_t storage;
+        storage.blindSign = false;
+        storage.initialized = true;
+        nvm_write((void *) &N_storage, (void *) &storage, sizeof(internalStorage_t));
+    }
 
     int input_len = 0;
     command_t cmd = {0};

@@ -109,6 +109,8 @@ uint16_t handleSignHash(uint8_t p1 __attribute__((unused)),
                         uint16_t len) {
     if (len != sizeof(uint32_t) + SIA_HASH_SIZE) {
         return SW_INVALID_PARAM;
+    } else if (!N_storage.blindSign) {
+        return SW_USER_REJECTED;
     }
 
     // Read the index of the signing key. U4LE is a helper macro for
