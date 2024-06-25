@@ -75,56 +75,51 @@ void ui_menu_about(void) {
 }
 #else
 
-static const char *const INFO_TYPES[] = {"Version", "Developer"};
-static const char *const INFO_CONTENTS[] = {APPVERSION, APPDEVELOPER};
+static void controls_callback(int token, uint8_t index, int page);
 
-#define BLIND_SIGN_TOKEN 0
-static nbgl_contentSwitch_t BLIND_SIGN_SWITCH = {0};
+#define SETTING_INFO_NB     2
+static const char *const INFO_TYPES[SETTING_INFO_NB] = {"Version", "Developer"};
+static const char *const INFO_CONTENTS[SETTING_INFO_NB] = {APPVERSION, APPDEVELOPER};
+
+// settings switches definitions
+enum { BLIND_SIGNING_TOKEN = FIRST_USER_TOKEN };
+enum { BLIND_SIGNING_ID = 0, SETTINGS_SWITCHES_NB };
+
+static nbgl_contentSwitch_t switches[SETTINGS_SWITCHES_NB] = {0};
+
+static const nbgl_contentInfoList_t infoList = {
+    .nbInfos = SETTING_INFO_NB,
+    .infoTypes = INFO_TYPES,
+    .infoContents = INFO_CONTENTS,
+};
+
+// settings menu definition
+#define SETTING_CONTENTS_NB 1
+static const nbgl_content_t contents[SETTING_CONTENTS_NB] = {
+    {.type = SWITCHES_LIST,
+     .content.switchesList.nbSwitches = SETTINGS_SWITCHES_NB,
+     .content.switchesList.switches = switches,
+     .contentActionCallback = controls_callback}};
+
+static const nbgl_genericContents_t settingContents = {.callbackCallNeeded = false,
+                                                       .contentsList = contents,
+                                                       .nbContents = SETTING_CONTENTS_NB};
 
 static void toggle_blind_sign(void) {
-    PRINTF("toggle_blind_sign\n");
     const bool new_value = !N_storage.blindSign;
     nvm_write((void *) &N_storage.blindSign, (void *) &new_value, sizeof(bool));
+
+#ifdef HAVE_NBGL
+    switches[BLIND_SIGNING_ID].initState = new_value ? ON_STATE : OFF_STATE;
+#endif
 }
 
-static void settings_callback(int token, uint8_t index) {
-    PRINTF("settings_callback: %d, %d\n", token, index);
-    if (token == BLIND_SIGN_TOKEN) {
+static void controls_callback(int token, uint8_t index, int page) {
+    UNUSED(index);
+    UNUSED(page);
+    if (token == BLIND_SIGNING_TOKEN) {
         toggle_blind_sign();
     }
-}
-
-static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
-    PRINTF("nav_callback\n");
-
-    explicit_bzero(content, sizeof(nbgl_pageContent_t));
-    switch (page) {
-        case 0:
-            PRINTF("Info\n");
-            content->type = INFOS_LIST;
-            content->infosList.nbInfos = 2;
-            content->infosList.infoTypes = INFO_TYPES;
-            content->infosList.infoContents = INFO_CONTENTS;
-            break;
-        case 1:
-            PRINTF("Settings\n");
-            BLIND_SIGN_SWITCH.text = "Enable blind signing";
-            BLIND_SIGN_SWITCH.subText = "Recommended only for experienced users";
-            BLIND_SIGN_SWITCH.token = BLIND_SIGN_TOKEN;
-            BLIND_SIGN_SWITCH.tuneId = NBGL_NO_TUNE;
-            BLIND_SIGN_SWITCH.initState = N_storage.blindSign ? ON_STATE : OFF_STATE;
-
-            content->type = SWITCHES_LIST;
-            content->switchesList.nbSwitches = 1;
-            content->switchesList.switches = &BLIND_SIGN_SWITCH;
-            break;
-        default:
-            PRINTF("Other\n");
-            return false;
-            break;
-    }
-
-    return true;
 }
 
 void app_quit(void) {
@@ -133,11 +128,19 @@ void app_quit(void) {
 }
 
 void ui_idle(void) {
-    nbgl_useCaseHome(APPNAME, &C_stax_app_sia, NULL, false, ui_menu_about, app_quit);
-}
+    switches[BLIND_SIGNING_ID].text = "Enable blind signing";
+    switches[BLIND_SIGNING_ID].subText = "Recommend only for experienced users";
+    switches[BLIND_SIGNING_ID].token = BLIND_SIGNING_TOKEN;
+    switches[BLIND_SIGNING_ID].tuneId = TUNE_TAP_CASUAL;
 
-void ui_menu_about(void) {
-    nbgl_useCaseSettings(APPNAME, 0, 2, false, ui_idle, nav_callback, settings_callback);
+    nbgl_useCaseHomeAndSettings(APPNAME,
+                                &C_stax_app_sia,
+                                NULL,
+                                INIT_HOME_PAGE,
+                                &settingContents,
+                                &infoList,
+                                NULL,
+                                app_quit);
 }
 
 #endif
@@ -228,11 +231,13 @@ void app_main() {
     ui_idle();
 
     if (!N_storage.initialized) {
-        internalStorage_t storage;
-        storage.blindSign = false;
+        internalStorage_t storage = {0};
         storage.initialized = true;
         nvm_write((void *) &N_storage, (void *) &storage, sizeof(internalStorage_t));
     }
+#ifdef HAVE_NBGL
+    switches[BLIND_SIGNING_ID].initState = N_storage.blindSign ? ON_STATE : OFF_STATE;
+#endif
 
     int input_len = 0;
     command_t cmd = {0};
