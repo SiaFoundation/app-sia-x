@@ -20,10 +20,26 @@ def test_sign_hash_accept(firmware, backend, navigator, test_name):
     client = BoilerplateCommandSender(backend)
     index = 5
 
+    if firmware.device.startswith("nano"):
+        navigator.navigate([
+            NavInsID.RIGHT_CLICK,
+            NavInsID.BOTH_CLICK,
+            NavInsID.RIGHT_CLICK,
+            NavInsID.RIGHT_CLICK,
+            NavInsID.BOTH_CLICK,
+        ], screen_change_before_first_instruction=False)
+    else:
+        navigator.navigate([
+            NavInsID.USE_CASE_HOME_SETTINGS,
+            NavIns(NavInsID.TOUCH, (350,115)),
+            NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT,
+        ], screen_change_before_first_instruction=False)
+
     with client.sign_hash_with_confirmation(index=index, to_sign=test_to_sign):
         # Disable raising when trying to unpack an error APDU
         backend.raise_policy = RaisePolicy.RAISE_NOTHING
         if firmware.device.startswith("nano"):
+            # enable blind signing
             navigator.navigate_until_text_and_compare(
                 NavInsID.RIGHT_CLICK,
                 [NavInsID.BOTH_CLICK],
@@ -32,15 +48,7 @@ def test_sign_hash_accept(firmware, backend, navigator, test_name):
                 test_name,
             )
         else:
-            # USE_CASE_HOME_SETTINGS just times out, so we have to disable
-            # this test because we cannot change the settings on Stax
-            return
-
             instructions = [
-                NavInsID.USE_CASE_HOME_SETTINGS,
-                NavInsID.USE_CASE_SETTINGS_NEXT,
-                NavIns(NavInsID.TOUCH, (350,115)),
-                NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT,
                 NavInsID.USE_CASE_REVIEW_TAP,
                 NavInsID.USE_CASE_REVIEW_TAP,
                 NavInsID.USE_CASE_REVIEW_CONFIRM,
@@ -61,6 +69,21 @@ def test_sign_hash_reject(firmware, backend, navigator, test_name):
     client = BoilerplateCommandSender(backend)
     index = 5
 
+    if firmware.device.startswith("nano"):
+        navigator.navigate([
+            NavInsID.RIGHT_CLICK,
+            NavInsID.BOTH_CLICK,
+            NavInsID.RIGHT_CLICK,
+            NavInsID.RIGHT_CLICK,
+            NavInsID.BOTH_CLICK,
+        ], screen_change_before_first_instruction=False)
+    else:
+        navigator.navigate([
+            NavInsID.USE_CASE_HOME_SETTINGS,
+            NavIns(NavInsID.TOUCH, (350,115)),
+            NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT,
+        ], screen_change_before_first_instruction=False)
+
     with client.sign_hash_with_confirmation(index=index, to_sign=test_to_sign):
         # Disable raising when trying to unpack an error APDU
         backend.raise_policy = RaisePolicy.RAISE_NOTHING
@@ -74,16 +97,8 @@ def test_sign_hash_reject(firmware, backend, navigator, test_name):
                 test_name,
             )
         else:
-            # USE_CASE_HOME_SETTINGS just times out, so we have to disable
-            # this test because we cannot change the settings on Stax
-            return
-
             navigator.navigate_and_compare(
                 ROOT_SCREENSHOT_PATH, test_name, [
-                    NavInsID.USE_CASE_HOME_SETTINGS,
-                    NavInsID.USE_CASE_SETTINGS_NEXT,
-                    NavIns(NavInsID.TOUCH, (350,115)),
-                    NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT,
                     NavInsID.USE_CASE_REVIEW_REJECT,
                 ]
             )
