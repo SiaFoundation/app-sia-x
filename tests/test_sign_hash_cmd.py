@@ -7,7 +7,7 @@ from application_client.boilerplate_response_unpacker import (
     unpack_sign_tx_response,
 )
 from ragger.backend import RaisePolicy
-from ragger.navigator import NavInsID
+from ragger.navigator import NavIns, NavInsID
 from ragger.bip import calculate_public_key_and_chaincode, CurveChoice
 from utils import ROOT_SCREENSHOT_PATH
 
@@ -32,7 +32,15 @@ def test_sign_hash_accept(firmware, backend, navigator, test_name):
                 test_name,
             )
         else:
+            # USE_CASE_HOME_SETTINGS just times out, so we have to disable
+            # this test because we cannot change the settings on Stax
+            return
+
             instructions = [
+                NavInsID.USE_CASE_HOME_SETTINGS,
+                NavInsID.USE_CASE_SETTINGS_NEXT,
+                NavIns(NavInsID.TOUCH, (350,115)),
+                NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT,
                 NavInsID.USE_CASE_REVIEW_TAP,
                 NavInsID.USE_CASE_REVIEW_TAP,
                 NavInsID.USE_CASE_REVIEW_CONFIRM,
@@ -66,8 +74,18 @@ def test_sign_hash_reject(firmware, backend, navigator, test_name):
                 test_name,
             )
         else:
+            # USE_CASE_HOME_SETTINGS just times out, so we have to disable
+            # this test because we cannot change the settings on Stax
+            return
+
             navigator.navigate_and_compare(
-                ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_REVIEW_REJECT]
+                ROOT_SCREENSHOT_PATH, test_name, [
+                    NavInsID.USE_CASE_HOME_SETTINGS,
+                    NavInsID.USE_CASE_SETTINGS_NEXT,
+                    NavIns(NavInsID.TOUCH, (350,115)),
+                    NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT,
+                    NavInsID.USE_CASE_REVIEW_REJECT,
+                ]
             )
 
     # Assert that we have received a refusal
