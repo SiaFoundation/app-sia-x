@@ -38,7 +38,17 @@ const internalStorage_t N_storage_real;
 void ui_idle(void);
 void ui_menu_about(void);
 
+static void update_blind_sign_ui(void);
+
+static void toggle_blind_sign(void) {
+    const bool new_value = !N_storage.blindSign;
+    nvm_write((void *) &N_storage.blindSign, (void *) &new_value, sizeof(bool));
+    update_blind_sign_ui();
+}
+
 #ifdef HAVE_BAGL
+static char BLIND_SIGNING_MESSAGE[22] = {0};
+
 UX_STEP_NOCB(ux_menu_ready_step, nn, {"Awaiting", "commands"});
 UX_STEP_CB(ux_menu_about_step, pn, ui_menu_about(), {&C_icon_certificate, "About"});
 UX_STEP_VALID(ux_menu_exit_step, pn, os_sched_exit(0), {&C_icon_dashboard, "Quit"});
@@ -51,14 +61,20 @@ UX_FLOW(ux_menu_main_flow, &ux_menu_ready_step, &ux_menu_about_step, &ux_menu_ex
 
 UX_STEP_NOCB(ux_menu_version_step, bn, {"Version", APPVERSION});
 UX_STEP_NOCB(ux_menu_developer_step, bn, {"Developer", APPDEVELOPER});
+UX_STEP_CB(ux_menu_blind_sign_step,
+           pn,
+           toggle_blind_sign(),
+           {&C_icon_certificate, BLIND_SIGNING_MESSAGE});
 UX_STEP_CB(ux_menu_back_step, pb, ui_idle(), {&C_icon_back, "Back"});
 
 // flow for the about submenu:
 // #1 screen: app version
-// #2 screen: back button
+// #2 screen: blind sign setting
+// #3 screen: back button
 UX_FLOW(ux_menu_about_flow,
         &ux_menu_version_step,
         &ux_menu_developer_step,
+        &ux_menu_blind_sign_step,
         &ux_menu_back_step,
         FLOW_LOOP);
 
@@ -73,6 +89,16 @@ void ui_idle(void) {
 void ui_menu_about(void) {
     ux_flow_init(0, ux_menu_about_flow, NULL);
 }
+
+static void update_blind_sign_ui(void) {
+    if (N_storage.blindSign) {
+        memcpy(BLIND_SIGNING_MESSAGE, "Disable blind signing", sizeof(BLIND_SIGNING_MESSAGE));
+    } else {
+        memcpy(BLIND_SIGNING_MESSAGE, "Enable blind signing", sizeof(BLIND_SIGNING_MESSAGE));
+    }
+    ui_idle();
+}
+
 #else
 
 static void controls_callback(int token, uint8_t index, int page);
@@ -105,21 +131,16 @@ static const nbgl_genericContents_t settingContents = {.callbackCallNeeded = fal
                                                        .contentsList = contents,
                                                        .nbContents = SETTING_CONTENTS_NB};
 
-static void toggle_blind_sign(void) {
-    const bool new_value = !N_storage.blindSign;
-    nvm_write((void *) &N_storage.blindSign, (void *) &new_value, sizeof(bool));
-
-#ifdef HAVE_NBGL
-    switches[BLIND_SIGNING_ID].initState = new_value ? ON_STATE : OFF_STATE;
-#endif
-}
-
 static void controls_callback(int token, uint8_t index, int page) {
     UNUSED(index);
     UNUSED(page);
     if (token == BLIND_SIGNING_TOKEN) {
         toggle_blind_sign();
     }
+}
+
+static void update_blind_sign_ui(void) {
+    switches[BLIND_SIGNING_ID].initState = N_storage.blindSign ? ON_STATE : OFF_STATE;
 }
 
 void app_quit(void) {
@@ -228,16 +249,13 @@ void app_main() {
     // Initialize io
     io_init();
 
-    ui_idle();
-
     if (!N_storage.initialized) {
         internalStorage_t storage = {0};
         storage.initialized = true;
         nvm_write((void *) &N_storage, (void *) &storage, sizeof(internalStorage_t));
     }
-#ifdef HAVE_NBGL
-    switches[BLIND_SIGNING_ID].initState = N_storage.blindSign ? ON_STATE : OFF_STATE;
-#endif
+    update_blind_sign_ui();
+    ui_idle();
 
     int input_len = 0;
     command_t cmd = {0};
