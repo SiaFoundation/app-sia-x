@@ -18,10 +18,10 @@ your Ledger device, follow Ledger's [setup instructions](https://speculos.ledger
 After the app is installed, build the `sialedger.go` binary to interact with
 the device. `./sialedger --help` will print a list of commands.
 
-## Usage
+## Installation and Usage
 
 Please refer to our [standalone guide](https://docs.sia.tech/sia-integrations/using-the-sia-ledger-nano-app-sia-central) for a walkthrough that demonstrates how
-to generate addresses and sign transactions using the app.
+to install the app, generate addresses and sign transactions.
 
 ## Security Model
 

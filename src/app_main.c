@@ -33,11 +33,22 @@
 // because multiple files include ux.h; they need to be defined in exactly one
 // place. See ux.h for their descriptions.
 commandContext global;
+const internalStorage_t N_storage_real;
 
 void ui_idle(void);
 void ui_menu_about(void);
 
+static void update_blind_sign_ui(void);
+
+static void toggle_blind_sign(void) {
+    const bool new_value = !N_storage.blindSign;
+    nvm_write((void *) &N_storage.blindSign, (void *) &new_value, sizeof(bool));
+    update_blind_sign_ui();
+}
+
 #ifdef HAVE_BAGL
+static char BLIND_SIGNING_MESSAGE[22] = {0};
+
 UX_STEP_NOCB(ux_menu_ready_step, nn, {"Awaiting", "commands"});
 UX_STEP_CB(ux_menu_about_step, pn, ui_menu_about(), {&C_icon_certificate, "About"});
 UX_STEP_VALID(ux_menu_exit_step, pn, os_sched_exit(0), {&C_icon_dashboard, "Quit"});
@@ -50,14 +61,20 @@ UX_FLOW(ux_menu_main_flow, &ux_menu_ready_step, &ux_menu_about_step, &ux_menu_ex
 
 UX_STEP_NOCB(ux_menu_version_step, bn, {"Version", APPVERSION});
 UX_STEP_NOCB(ux_menu_developer_step, bn, {"Developer", APPDEVELOPER});
+UX_STEP_CB(ux_menu_blind_sign_step,
+           pn,
+           toggle_blind_sign(),
+           {&C_icon_certificate, BLIND_SIGNING_MESSAGE});
 UX_STEP_CB(ux_menu_back_step, pb, ui_idle(), {&C_icon_back, "Back"});
 
 // flow for the about submenu:
 // #1 screen: app version
-// #2 screen: back button
+// #2 screen: blind sign setting
+// #3 screen: back button
 UX_FLOW(ux_menu_about_flow,
         &ux_menu_version_step,
         &ux_menu_developer_step,
+        &ux_menu_blind_sign_step,
         &ux_menu_back_step,
         FLOW_LOOP);
 
@@ -72,17 +89,58 @@ void ui_idle(void) {
 void ui_menu_about(void) {
     ux_flow_init(0, ux_menu_about_flow, NULL);
 }
-#else
-static const char *const INFO_TYPES[] = {"Version", "Developer"};
-static const char *const INFO_CONTENTS[] = {APPVERSION, APPDEVELOPER};
 
-static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
+static void update_blind_sign_ui(void) {
+    if (N_storage.blindSign) {
+        memcpy(BLIND_SIGNING_MESSAGE, "Disable blind signing", sizeof(BLIND_SIGNING_MESSAGE));
+    } else {
+        memcpy(BLIND_SIGNING_MESSAGE, "Enable blind signing", sizeof(BLIND_SIGNING_MESSAGE));
+    }
+    ui_idle();
+}
+
+#else
+
+static void controls_callback(int token, uint8_t index, int page);
+
+#define SETTING_INFO_NB     2
+static const char *const INFO_TYPES[SETTING_INFO_NB] = {"Version", "Developer"};
+static const char *const INFO_CONTENTS[SETTING_INFO_NB] = {APPVERSION, APPDEVELOPER};
+
+// settings switches definitions
+enum { BLIND_SIGNING_TOKEN = FIRST_USER_TOKEN };
+enum { BLIND_SIGNING_ID = 0, SETTINGS_SWITCHES_NB };
+
+static nbgl_contentSwitch_t switches[SETTINGS_SWITCHES_NB] = {0};
+
+static const nbgl_contentInfoList_t infoList = {
+    .nbInfos = SETTING_INFO_NB,
+    .infoTypes = INFO_TYPES,
+    .infoContents = INFO_CONTENTS,
+};
+
+// settings menu definition
+#define SETTING_CONTENTS_NB 1
+static const nbgl_content_t contents[SETTING_CONTENTS_NB] = {
+    {.type = SWITCHES_LIST,
+     .content.switchesList.nbSwitches = SETTINGS_SWITCHES_NB,
+     .content.switchesList.switches = switches,
+     .contentActionCallback = controls_callback}};
+
+static const nbgl_genericContents_t settingContents = {.callbackCallNeeded = false,
+                                                       .contentsList = contents,
+                                                       .nbContents = SETTING_CONTENTS_NB};
+
+static void controls_callback(int token, uint8_t index, int page) {
+    UNUSED(index);
     UNUSED(page);
-    content->type = INFOS_LIST;
-    content->infosList.nbInfos = 2;
-    content->infosList.infoTypes = INFO_TYPES;
-    content->infosList.infoContents = INFO_CONTENTS;
-    return true;
+    if (token == BLIND_SIGNING_TOKEN) {
+        toggle_blind_sign();
+    }
+}
+
+static void update_blind_sign_ui(void) {
+    switches[BLIND_SIGNING_ID].initState = N_storage.blindSign ? ON_STATE : OFF_STATE;
 }
 
 void app_quit(void) {
@@ -91,11 +149,19 @@ void app_quit(void) {
 }
 
 void ui_idle(void) {
-    nbgl_useCaseHome(APPNAME, &C_stax_app_sia, NULL, false, ui_menu_about, app_quit);
-}
+    switches[BLIND_SIGNING_ID].text = "Enable blind signing";
+    switches[BLIND_SIGNING_ID].subText = "Recommend only for experienced users";
+    switches[BLIND_SIGNING_ID].token = BLIND_SIGNING_TOKEN;
+    switches[BLIND_SIGNING_ID].tuneId = TUNE_TAP_CASUAL;
 
-void ui_menu_about(void) {
-    nbgl_useCaseSettings(APPNAME, 0, 1, false, ui_idle, nav_callback, NULL);
+    nbgl_useCaseHomeAndSettings(APPNAME,
+                                &C_stax_app_sia,
+                                NULL,
+                                INIT_HOME_PAGE,
+                                &settingContents,
+                                &infoList,
+                                NULL,
+                                app_quit);
 }
 
 #endif
@@ -183,6 +249,12 @@ void app_main() {
     // Initialize io
     io_init();
 
+    if (!N_storage.initialized) {
+        internalStorage_t storage = {0};
+        storage.initialized = true;
+        nvm_write((void *) &N_storage, (void *) &storage, sizeof(internalStorage_t));
+    }
+    update_blind_sign_ui();
     ui_idle();
 
     int input_len = 0;

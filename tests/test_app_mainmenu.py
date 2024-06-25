@@ -15,6 +15,7 @@ def test_app_mainmenu(firmware, navigator, test_name):
     else:
         instructions = [
             NavInsID.USE_CASE_HOME_INFO,
+            NavInsID.USE_CASE_SETTINGS_NEXT,
             NavInsID.USE_CASE_SETTINGS_SINGLE_PAGE_EXIT,
         ]
     navigator.navigate_and_compare(

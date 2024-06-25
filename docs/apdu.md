@@ -12,8 +12,8 @@ All commands use CLA = 0xE0.
 | ---- | ---- | -------------- | --------------------------------------- |
 | 0xE0 | 0x01 | GET_VERSION    | Returns version of the app              |
 | 0xE0 | 0x02 | GET_PUBLIC_KEY | Returns public key or addreses          |
-| 0xE0 | 0x03 | SIGN_HASH      | Sign a 32 byte hash                     |
-| 0xE0 | 0x04 | GET_TXN_HASH   | Sign a transaction or retrieve its hash |
+| 0xE0 | 0x04 | SIGN_HASH      | Sign a 32 byte hash                     |
+| 0xE0 | 0x08 | GET_TXN_HASH   | Sign a transaction or retrieve its hash |
 
 ### Commands requiring multiple messages
 
