@@ -92,14 +92,14 @@ static void confirm_callback(bool confirm) {
             uint8_t signature[64] = {0};
             deriveAndSign(signature, ctx->keyIndex, ctx->txn.sigHash);
             io_send_response_pointer(signature, sizeof(signature), SW_OK);
-            nbgl_useCaseStatus("TRANSACTION SIGNED", true, ui_idle);
+            nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_SIGNED, ui_idle);
         } else {
             io_send_response_pointer(ctx->txn.sigHash, sizeof(ctx->txn.sigHash), SW_OK);
             nbgl_useCaseStatus("TRANSACTION HASHED", true, ui_idle);
         }
     } else {
         io_send_sw(SW_USER_REJECTED);
-        nbgl_useCaseStatus("Transaction Rejected", false, ui_idle);
+        nbgl_useCaseReviewStatus(STATUS_TYPE_TRANSACTION_REJECTED, ui_idle);
     }
 }
 
