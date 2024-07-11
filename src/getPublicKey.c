@@ -38,7 +38,7 @@
 // Get a pointer to getPublicKey's state variables.
 static getPublicKeyContext_t* ctx = &global.getPublicKeyContext;
 
-static unsigned int send_pubkey(void);
+static unsigned int process_pubkey(bool send);
 
 #ifdef HAVE_BAGL
 // Allows scrolling through the address/public key
@@ -53,7 +53,10 @@ UX_STEP_NOCB(ux_approve_pk_flow_1_step,
              bn,
              {global.getPublicKeyContext.typeStr, global.getPublicKeyContext.keyStr});
 
-UX_STEP_VALID(ux_approve_pk_flow_2_step, pb, send_pubkey(), {&C_icon_validate_14, "Approve"});
+UX_STEP_VALID(ux_approve_pk_flow_2_step,
+              pb,
+              process_pubkey(true),
+              {&C_icon_validate_14, "Approve"});
 
 UX_STEP_VALID(ux_approve_pk_flow_3_step, pb, io_reject(), {&C_icon_crossmark, "Reject"});
 
@@ -67,39 +70,26 @@ UX_FLOW(ux_approve_pk_flow,
         &ux_approve_pk_flow_3_step);
 #else
 
-static void cancel_status(void) {
-    if (ctx->genAddr) {
-        nbgl_useCaseStatus("Address Verification Cancelled", false, ui_idle);
-    } else {
-        nbgl_useCaseStatus("Pubkey Verification Cancelled", false, ui_idle);
-    }
-}
-
-static void confirm_address_rejection(void) {
-    // display a status page and go back to main
-    io_send_sw(SW_USER_REJECTED);
-    cancel_status();
-}
-
 static void review_choice(bool confirm) {
     if (confirm) {
+        process_pubkey(true);
         if (ctx->genAddr) {
-            nbgl_useCaseStatus("ADDRESS VERIFIED", true, ui_idle);
+            nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_VERIFIED, ui_idle);
         } else {
             nbgl_useCaseStatus("PUBKEY VERIFIED", true, ui_idle);
         }
     } else {
-        cancel_status();
+        io_send_sw(SW_USER_REJECTED);
+        if (ctx->genAddr) {
+            nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_REJECTED, ui_idle);
+        } else {
+            nbgl_useCaseStatus("Pubkey Verification Cancelled", false, ui_idle);
+        }
     }
-}
-
-static void continue_review(void) {
-    send_pubkey();
-    nbgl_useCaseAddressConfirmation(ctx->fullStr, review_choice);
 }
 #endif
 
-static unsigned int send_pubkey(void) {
+static unsigned int process_pubkey(bool send) {
     uint8_t publicKey[65] = {0};
 
     deriveSiaPublicKey(ctx->keyIndex, publicKey);
@@ -114,10 +104,14 @@ static unsigned int send_pubkey(void) {
         {.ptr = pubkeyBytes, .size = 32, .offset = 0},
         {.ptr = siaAddress, .size = 76, .offset = 0},
     };
-    io_send_response_buffers(bufs, sizeof(bufs) / sizeof(bufs[0]), SW_OK);
+    if (send) {
+        io_send_response_buffers(bufs, sizeof(bufs) / sizeof(bufs[0]), SW_OK);
+    }
 
-    // Prepare the comparison screen, filling in the header and body text.
+// Prepare the comparison screen, filling in the header and body text.
+#ifdef HAVE_BAGL
     memmove(ctx->typeStr, "Compare:", 9);
+#endif
     if (ctx->genAddr) {
         // The APDU buffer already contains the hex-encoded address, so
         // copy it directly.
@@ -131,7 +125,6 @@ static unsigned int send_pubkey(void) {
 #ifdef HAVE_BAGL
     ux_flow_init(0, ux_compare_pk_flow, NULL);
 #endif
-
     return 0;
 }
 
@@ -163,12 +156,13 @@ uint16_t handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t le
 #ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_pk_flow, NULL);
 #else
-    nbgl_useCaseReviewStart(&C_stax_app_sia,
-                            ctx->typeStr,
-                            ctx->keyStr,
-                            "Cancel",
-                            continue_review,
-                            confirm_address_rejection);
+    process_pubkey(false);
+    nbgl_useCaseAddressReview(ctx->fullStr,
+                              NULL,
+                              &C_stax_app_sia,
+                              ctx->typeStr,
+                              ctx->keyStr,
+                              review_choice);
 #endif
 
     return 0;
