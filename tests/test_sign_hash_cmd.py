@@ -100,6 +100,7 @@ def test_sign_hash_reject(firmware, backend, navigator, test_name):
             navigator.navigate_and_compare(
                 ROOT_SCREENSHOT_PATH, test_name, [
                     NavInsID.USE_CASE_REVIEW_REJECT,
+                    NavInsID.USE_CASE_CHOICE_CONFIRM,
                 ]
             )
 

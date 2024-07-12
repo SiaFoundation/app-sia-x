@@ -71,6 +71,8 @@ UX_FLOW(ux_approve_hash_flow,
         &ux_approve_hash_flow_3_step);
 #else
 
+static nbgl_layoutTagValue_t pair = {0};
+
 static void cancel_review(void) {
     // display a status page and go back to main
     io_send_sw(SW_USER_REJECTED);
@@ -83,22 +85,6 @@ static void confirm_callback(bool confirm) {
     } else {
         cancel_review();
     }
-}
-
-static void begin_review(void) {
-    nbgl_layoutTagValue_t pair = {0};
-    pair.item = "Hash";
-    pair.value = ctx->hexHash;
-
-    nbgl_layoutTagValueList_t tagValueList = {0};
-    tagValueList.nbPairs = 1;
-    tagValueList.pairs = &pair;
-
-    nbgl_pageInfoLongPress_t longPress = {0};
-    longPress.text = "Sign hash";
-    longPress.longPressText = "Hold to sign";
-
-    nbgl_useCaseStaticReview(&tagValueList, &longPress, "Cancel", confirm_callback);
 }
 
 #endif
@@ -127,15 +113,16 @@ uint16_t handleSignHash(uint8_t p1 __attribute__((unused)),
 #ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_hash_flow, NULL);
 #else
-
     snprintf(ctx->typeStr, sizeof(ctx->typeStr), "Sign Hash with Key %d?", ctx->keyIndex);
 
-    nbgl_useCaseReviewStart(&C_stax_app_sia,
-                            ctx->typeStr,
-                            NULL,
-                            "Cancel",
-                            begin_review,
-                            cancel_review);
+    pair.item = "Hash";
+    pair.value = ctx->hexHash;
+
+    nbgl_layoutTagValueList_t tagValueList = {0};
+    tagValueList.nbPairs = 1;
+    tagValueList.pairs = &pair;
+
+    nbgl_useCaseReview(TYPE_MESSAGE, &tagValueList, &C_stax_app_sia, ctx->typeStr, NULL, "Sign hash", confirm_callback);
 #endif
 
     return 0;
