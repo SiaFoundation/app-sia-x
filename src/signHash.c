@@ -122,7 +122,13 @@ uint16_t handleSignHash(uint8_t p1 __attribute__((unused)),
     tagValueList.nbPairs = 1;
     tagValueList.pairs = &pair;
 
-    nbgl_useCaseReview(TYPE_MESSAGE, &tagValueList, &C_stax_app_sia, ctx->typeStr, NULL, "Sign hash", confirm_callback);
+    nbgl_useCaseReview(TYPE_MESSAGE,
+                       &tagValueList,
+                       &C_stax_app_sia,
+                       ctx->typeStr,
+                       NULL,
+                       "Sign hash",
+                       confirm_callback);
 #endif
 
     return 0;
