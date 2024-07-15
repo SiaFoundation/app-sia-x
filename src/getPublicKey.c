@@ -159,7 +159,7 @@ uint16_t handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t le
     process_pubkey(false);
     nbgl_useCaseAddressReview(ctx->fullStr,
                               NULL,
-                              &C_stax_app_sia,
+                              &C_stax_app_sia_big,
                               ctx->typeStr,
                               ctx->keyStr,
                               review_choice);

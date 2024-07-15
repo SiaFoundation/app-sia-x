@@ -41,7 +41,7 @@ APP_SOURCE_PATH += src
 ICON_NANOS = nanos_app_sia.gif
 ICON_NANOX = nanox_app_sia.gif
 ICON_NANOSP = nanos2_app_sia.gif
-ICON_STAX = stax_app_sia.gif
+ICON_STAX = stax_app_sia_big.gif
 
 # Application allowed derivation curves.
 # Possibles curves are: secp256k1, secp256r1, ed25519 and bls12381g1

@@ -124,7 +124,7 @@ uint16_t handleSignHash(uint8_t p1 __attribute__((unused)),
 
     nbgl_useCaseReview(TYPE_MESSAGE,
                        &tagValueList,
-                       &C_stax_app_sia,
+                       &C_stax_app_sia_big,
                        ctx->typeStr,
                        NULL,
                        "Sign hash",

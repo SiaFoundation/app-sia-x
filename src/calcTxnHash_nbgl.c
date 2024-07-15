@@ -109,7 +109,7 @@ static bool nav_callback(uint8_t page, nbgl_pageContent_t *content) {
     ctx->elementIndex = page;
     if (ctx->elementIndex >= ctx->txn.elementIndex) {
         content->type = INFO_LONG_PRESS;
-        content->infoLongPress.icon = &C_stax_app_sia;
+        content->infoLongPress.icon = &C_stax_app_sia_big;
         if (ctx->sign) {
             content->infoLongPress.text = "Sign transaction";
             content->infoLongPress.longPressText = "Hold to sign";
@@ -232,7 +232,7 @@ uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t
             return SW_OK;
             break;
         case TXN_STATE_FINISHED:
-            nbgl_useCaseReviewStart(&C_stax_app_sia,
+            nbgl_useCaseReviewStart(&C_stax_app_sia_big,
                                     (ctx->sign) ? "Sign Transaction" : "Hash Transaction",
                                     NULL,
                                     "Cancel",

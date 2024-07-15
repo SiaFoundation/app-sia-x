@@ -155,7 +155,7 @@ void ui_idle(void) {
     switches[BLIND_SIGNING_ID].tuneId = TUNE_TAP_CASUAL;
 
     nbgl_useCaseHomeAndSettings(APPNAME,
-                                &C_stax_app_sia,
+                                &C_stax_app_sia_big,
                                 NULL,
                                 INIT_HOME_PAGE,
                                 &settingContents,
