@@ -19,132 +19,125 @@
 // Keep this description in mind as you read through the implementation.
 
 #include <os.h>
+#include <io.h>
 #include <os_io_seproxyhal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <buffer.h>
 
 #include "blake2b.h"
 #include "sia.h"
 #include "sia_ux.h"
 
+// These are APDU parameters that control the behavior of the getPublicKey
+// command.
+#define P2_DISPLAY_ADDRESS 0x00
+#define P2_DISPLAY_PUBKEY  0x01
+
 // Get a pointer to getPublicKey's state variables.
-static getPublicKeyContext_t *ctx = &global.getPublicKeyContext;
+static getPublicKeyContext_t* ctx = &global.getPublicKeyContext;
 
+static unsigned int process_pubkey(bool send);
+
+#ifdef HAVE_BAGL
 // Allows scrolling through the address/public key
-UX_STEP_CB(
-	ux_compare_pk_flow_1_step,
-	bnnn_paging,
-	ui_idle(),
-	{
-		"Compare",
-		global.getPublicKeyContext.fullStr
-	}
-);
+UX_STEP_CB(ux_compare_pk_flow_1_step,
+           bnnn_paging,
+           ui_idle(),
+           {"Compare", global.getPublicKeyContext.fullStr});
 
-UX_FLOW(
-	ux_compare_pk_flow,
-	&ux_compare_pk_flow_1_step
-);
+UX_FLOW(ux_compare_pk_flow, &ux_compare_pk_flow_1_step);
 
-unsigned int io_seproxyhal_touch_pk_ok(void) {
-    cx_ecfp_public_key_t publicKey = {0};
+UX_STEP_NOCB(ux_approve_pk_flow_1_step,
+             bn,
+             {global.getPublicKeyContext.typeStr, global.getPublicKeyContext.keyStr});
 
-    // The response APDU will contain multiple objects, which means we need to
-    // remember our offset within G_io_apdu_buffer. By convention, the offset
-    // variable is named 'tx'.
-    uint8_t tx = 0;
+UX_STEP_VALID(ux_approve_pk_flow_2_step,
+              pb,
+              process_pubkey(true),
+              {&C_icon_validate_14, "Approve"});
 
-    deriveSiaKeypair(ctx->keyIndex, NULL, &publicKey);
-    extractPubkeyBytes(G_io_apdu_buffer + tx, &publicKey);
-    tx += 32;
-    pubkeyToSiaAddress((char *) G_io_apdu_buffer + tx, &publicKey);
-    tx += 76;
-
-    // Flush the APDU buffer, sending the response.
-    io_exchange_with_code(SW_OK, tx);
-
-    // Prepare the comparison screen, filling in the header and body text.
-    memmove(ctx->typeStr, "Compare:", 9);
-    if (ctx->genAddr) {
-        // The APDU buffer already contains the hex-encoded address, so
-        // copy it directly.
-        memmove(ctx->fullStr, G_io_apdu_buffer + 32, 76);
-        ctx->fullStr[76] = '\0';
-    } else {
-        // The APDU buffer contains the raw bytes of the public key, so
-        // first we need to convert to a human-readable form.
-        bin2hex(ctx->fullStr, G_io_apdu_buffer, 32);
-    }
-
-    ux_flow_init(0, ux_compare_pk_flow, NULL);
-
-    return 0;
-}
-
-UX_STEP_NOCB(
-	ux_approve_pk_flow_1_step, bn,
-     {
-		global.getPublicKeyContext.typeStr,
-		global.getPublicKeyContext.keyStr
-	}
-);
-
-UX_STEP_VALID(
-	ux_approve_pk_flow_2_step,
-	pb,
-	io_seproxyhal_touch_pk_ok(),
-	{
-		&C_icon_validate,
-		"Approve"
-	}
-);
-
-UX_STEP_VALID(
-	ux_approve_pk_flow_3_step,
-	pb,
-	io_seproxyhal_cancel(),
-	{
-		&C_icon_crossmark,
-		"Reject"
-	}
-);
+UX_STEP_VALID(ux_approve_pk_flow_3_step, pb, io_reject(), {&C_icon_crossmark, "Reject"});
 
 // Flow for the public key/address menu:
 // #1 screen: "generate address/public key from key #x?"
 // #2 screen: approve
 // #3 screen: reject
-UX_FLOW(
-	ux_approve_pk_flow,
-	&ux_approve_pk_flow_1_step,
-	&ux_approve_pk_flow_2_step,
-	&ux_approve_pk_flow_3_step
-);
+UX_FLOW(ux_approve_pk_flow,
+        &ux_approve_pk_flow_1_step,
+        &ux_approve_pk_flow_2_step,
+        &ux_approve_pk_flow_3_step);
+#else
 
-// These are APDU parameters that control the behavior of the getPublicKey
-// command.
-#define P2_DISPLAY_ADDRESS 0x00
-#define P2_DISPLAY_PUBKEY 0x01
+static void review_choice(bool confirm) {
+    if (confirm) {
+        process_pubkey(true);
+        if (ctx->genAddr) {
+            nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_VERIFIED, ui_idle);
+        } else {
+            nbgl_useCaseStatus("PUBKEY VERIFIED", true, ui_idle);
+        }
+    } else {
+        io_send_sw(SW_USER_REJECTED);
+        if (ctx->genAddr) {
+            nbgl_useCaseReviewStatus(STATUS_TYPE_ADDRESS_REJECTED, ui_idle);
+        } else {
+            nbgl_useCaseStatus("Pubkey Verification Cancelled", false, ui_idle);
+        }
+    }
+}
+#endif
 
-void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
-                        /* out */ volatile unsigned int* flags,
-                        /* out */ volatile unsigned int* tx) {
+static unsigned int process_pubkey(bool send) {
+    uint8_t publicKey[65] = {0};
+
+    deriveSiaPublicKey(ctx->keyIndex, publicKey);
+
+    uint8_t pubkeyBytes[32] = {0};
+    extractPubkeyBytes(pubkeyBytes, publicKey);
+    uint8_t siaAddress[76 + 1] = {0};
+    pubkeyToSiaAddress((char*) siaAddress, publicKey);
+
+    // Flush the APDU buffer, sending the response.
+    const buffer_t bufs[2] = {
+        {.ptr = pubkeyBytes, .size = 32, .offset = 0},
+        {.ptr = siaAddress, .size = 76, .offset = 0},
+    };
+    if (send) {
+        io_send_response_buffers(bufs, sizeof(bufs) / sizeof(bufs[0]), SW_OK);
+    }
+
+// Prepare the comparison screen, filling in the header and body text.
+#ifdef HAVE_BAGL
+    memmove(ctx->typeStr, "Compare:", 9);
+#endif
+    if (ctx->genAddr) {
+        // The APDU buffer already contains the hex-encoded address, so
+        // copy it directly.
+        memcpy(ctx->fullStr, siaAddress, sizeof(siaAddress));
+    } else {
+        // The APDU buffer contains the raw bytes of the public key, so
+        // first we need to convert to a human-readable form.
+        bin2hex(ctx->fullStr, pubkeyBytes, 32);
+    }
+
+#ifdef HAVE_BAGL
+    ux_flow_init(0, ux_compare_pk_flow, NULL);
+#endif
+    return 0;
+}
+
+uint16_t handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len) {
     UNUSED(p1);
     UNUSED(len);
-    UNUSED(tx);
 
     if ((p2 != P2_DISPLAY_ADDRESS) && (p2 != P2_DISPLAY_PUBKEY)) {
-        // Although THROW is technically a general-purpose exception
-        // mechanism, within a command handler it is basically just a
-        // convenient way of bailing out early and sending an error code to
-        // the computer. The exception will be caught by sia_main, which
-        // appends the code to the response APDU and sends it, much like
-        // io_exchange_with_code. THROW should not be called from
-        // preprocessors or button handlers.
-        THROW(SW_INVALID_PARAM);
+        return SW_INVALID_PARAM;
     }
 
     // Read Key Index
+    explicit_bzero(ctx, sizeof(getPublicKeyContext_t));
     ctx->keyIndex = U4LE(buffer, 0);
     ctx->genAddr = (p2 == P2_DISPLAY_ADDRESS);
 
@@ -160,7 +153,17 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t* buffer, uint16_t len,
         memmove(ctx->keyStr + 5 + n, "?", 2);
     }
 
+#ifdef HAVE_BAGL
     ux_flow_init(0, ux_approve_pk_flow, NULL);
+#else
+    process_pubkey(false);
+    nbgl_useCaseAddressReview(ctx->fullStr,
+                              NULL,
+                              &C_stax_app_sia_big,
+                              ctx->typeStr,
+                              ctx->keyStr,
+                              review_choice);
+#endif
 
-    *flags |= IO_ASYNCH_REPLY;
+    return 0;
 }
