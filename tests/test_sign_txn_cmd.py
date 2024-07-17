@@ -72,7 +72,7 @@ def test_sign_tx_refused(firmware, backend, navigator, test_name):
             ])
             navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, instructions)
         else:
-            navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_REVIEW_REJECT])
+            navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_VIEW_DETAILS_EXIT])
 
     response = client.get_async_response()
     assert response.status == Errors.SW_DENY
@@ -127,11 +127,11 @@ def test_sign_tx_accept(firmware, backend, navigator, test_name):
             navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, instructions)
         else:
             instructions = [
-                NavInsID.USE_CASE_REVIEW_TAP,
-                NavInsID.USE_CASE_REVIEW_TAP,
-                NavInsID.USE_CASE_REVIEW_TAP,
-                NavInsID.USE_CASE_REVIEW_TAP,
-                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.SWIPE_CENTER_TO_LEFT,
+                NavInsID.USE_CASE_VIEW_DETAILS_NEXT,
+                NavInsID.USE_CASE_VIEW_DETAILS_NEXT,
+                NavInsID.USE_CASE_VIEW_DETAILS_NEXT,
+                NavInsID.USE_CASE_VIEW_DETAILS_NEXT,
                 NavInsID.USE_CASE_REVIEW_CONFIRM,
             ]
             navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, instructions)

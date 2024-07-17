@@ -49,8 +49,8 @@ def test_sign_hash_accept(firmware, backend, navigator, test_name):
             )
         else:
             instructions = [
-                NavInsID.USE_CASE_REVIEW_TAP,
-                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.USE_CASE_VIEW_DETAILS_NEXT,
+                NavInsID.USE_CASE_VIEW_DETAILS_NEXT,
                 NavInsID.USE_CASE_REVIEW_CONFIRM,
             ]
             navigator.navigate_and_compare(
@@ -99,7 +99,7 @@ def test_sign_hash_reject(firmware, backend, navigator, test_name):
         else:
             navigator.navigate_and_compare(
                 ROOT_SCREENSHOT_PATH, test_name, [
-                    NavInsID.USE_CASE_REVIEW_REJECT,
+                    NavInsID.USE_CASE_VIEW_DETAILS_EXIT,
                     NavInsID.USE_CASE_CHOICE_CONFIRM,
                 ]
             )
