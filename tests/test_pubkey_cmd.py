@@ -26,7 +26,7 @@ def test_get_public_key_confirm_accepted(firmware, backend, navigator, test_name
             )
         else:
             instructions = [
-                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.USE_CASE_VIEW_DETAILS_NEXT,
                 NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM,
             ]
             navigator.navigate_and_compare(
@@ -59,7 +59,7 @@ def test_get_public_key_confirm_refused(firmware, backend, navigator, test_name)
             )
         else:
             navigator.navigate_and_compare(
-                ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_REVIEW_REJECT]
+                ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_VIEW_DETAILS_EXIT]
             )
 
     response = client.get_async_response()
@@ -84,7 +84,7 @@ def test_get_address_confirm_accepted(firmware, backend, navigator, test_name):
             )
         else:
             instructions = [
-                NavInsID.USE_CASE_REVIEW_TAP,
+                NavInsID.USE_CASE_VIEW_DETAILS_NEXT,
                 NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM,
             ]
             navigator.navigate_and_compare(
@@ -117,7 +117,7 @@ def test_get_address_confirm_refused(firmware, backend, navigator, test_name):
             )
         else:
             navigator.navigate_and_compare(
-                ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_REVIEW_REJECT]
+                ROOT_SCREENSHOT_PATH, test_name, [NavInsID.USE_CASE_VIEW_DETAILS_EXIT]
             )
 
     response = client.get_async_response()

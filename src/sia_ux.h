@@ -3,6 +3,7 @@
 
 #include <ux.h>
 #include "txn.h"
+#include "glyphs.h"
 
 #ifdef HAVE_NBGL
 #include <nbgl_use_case.h>
