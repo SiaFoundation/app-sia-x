@@ -264,16 +264,12 @@ func (n *Nano) SignHash(hash [32]byte, keyIndex uint32) (sig [64]byte, err error
 	return
 }
 
-func (n *Nano) CalcTxnHash(txn types.Transaction, sigIndex uint16, changeIndex uint32) (hash [32]byte, err error) {
+func (n *Nano) CalcTxnHash(data []byte, sigIndex uint16, changeIndex uint32) (hash [32]byte, err error) {
 	buf := bytes.NewBuffer(nil)
 	binary.Write(buf, binary.LittleEndian, uint32(0)) // keyIndex; ignored since we are not signing
 	binary.Write(buf, binary.LittleEndian, sigIndex)
 	binary.Write(buf, binary.LittleEndian, changeIndex)
-	enc := types.NewEncoder(buf)
-	txn.EncodeTo(enc)
-	if err := enc.Flush(); err != nil {
-		return [32]byte{}, fmt.Errorf("couldn't encode transaction: %w", err)
-	}
+	buf.Write(data)
 
 	var resp []byte
 	for buf.Len() > 0 {
@@ -292,16 +288,12 @@ func (n *Nano) CalcTxnHash(txn types.Transaction, sigIndex uint16, changeIndex u
 	return
 }
 
-func (n *Nano) SignTxn(txn types.Transaction, sigIndex uint16, keyIndex, changeIndex uint32) (sig [64]byte, err error) {
+func (n *Nano) SignTxn(data []byte, sigIndex uint16, keyIndex, changeIndex uint32) (sig [64]byte, err error) {
 	buf := bytes.NewBuffer(nil)
 	binary.Write(buf, binary.LittleEndian, keyIndex)
 	binary.Write(buf, binary.LittleEndian, sigIndex)
 	binary.Write(buf, binary.LittleEndian, changeIndex)
-	enc := types.NewEncoder(buf)
-	txn.EncodeTo(enc)
-	if err := enc.Flush(); err != nil {
-		return [64]byte{}, fmt.Errorf("couldn't encode transaction: %w", err)
-	}
+	buf.Write(data)
 
 	var resp []byte
 	for buf.Len() > 0 {
@@ -438,6 +430,7 @@ must set WholeTransaction = true.
 `
 	txnHashUsage        = `calculate the transaction hash, but do not sign it`
 	txnChangeIndexUsage = `key index of the transaction's change address`
+	txnV2Usage          = `providing a v2 transaction file`
 )
 
 func main() {
@@ -456,6 +449,7 @@ func main() {
 	txnCmd := flagg.New("txn", txnUsage)
 	txnHash := txnCmd.Bool("sighash", false, txnHashUsage)
 	txnChangeIndex := txnCmd.Uint64("changeIndex", math.MaxUint32, txnChangeIndexUsage)
+	txnV2 := txnCmd.Bool("v2", false, txnV2Usage)
 
 	cmd := flagg.Parse(flagg.Tree{
 		Cmd: rootCmd,
@@ -550,20 +544,36 @@ func main() {
 		if err != nil {
 			log.Fatalln("Couldn't read transaction:", err)
 		}
-		var txn types.Transaction
-		if err := json.Unmarshal(txnBytes, &txn); err != nil {
-			log.Fatalln("Couldn't decode transaction:", err)
-		}
 		sigIndex := uint16(parseIndex(args[1]))
 
+		var data bytes.Buffer
+		e := types.NewEncoder(&data)
+		e.WriteBool(*txnV2)
+		if *txnV2 {
+			var txn types.V2Transaction
+			if err := json.Unmarshal(txnBytes, &txn); err != nil {
+				log.Fatalln("Couldn't decode V2 transaction:", err)
+			}
+			txn.EncodeTo(e)
+		} else {
+			var txn types.Transaction
+			if err := json.Unmarshal(txnBytes, &txn); err != nil {
+				log.Fatalln("Couldn't decode transaction:", err)
+			}
+			txn.EncodeTo(e)
+		}
+		if err := e.Flush(); err != nil {
+			log.Fatalln("Couldn't flush:", err)
+		}
+
 		if *txnHash {
-			sighash, err := nano.CalcTxnHash(txn, sigIndex, uint32(*txnChangeIndex))
+			sighash, err := nano.CalcTxnHash(data.Bytes(), sigIndex, uint32(*txnChangeIndex))
 			if err != nil {
 				log.Fatalln("Couldn't get hash:", err)
 			}
 			fmt.Println(hex.EncodeToString(sighash[:]))
 		} else {
-			sig, err := nano.SignTxn(txn, sigIndex, parseIndex(args[2]), uint32(*txnChangeIndex))
+			sig, err := nano.SignTxn(data.Bytes(), sigIndex, parseIndex(args[2]), uint32(*txnChangeIndex))
 			if err != nil {
 				log.Fatalln("Couldn't get signature:", err)
 			}
