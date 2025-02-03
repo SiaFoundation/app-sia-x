@@ -13,9 +13,9 @@
 
 // macros for converting raw bytes to uint64_t
 #define U8BE(buf, off) \
-    (((uint64_t)(U4BE(buf, off)) << 32) | ((uint64_t)(U4BE(buf, off + 4)) & 0xFFFFFFFF))
+    (((uint64_t) (U4BE(buf, off)) << 32) | ((uint64_t) (U4BE(buf, off + 4)) & 0xFFFFFFFF))
 #define U8LE(buf, off) \
-    (((uint64_t)(U4LE(buf, off + 4)) << 32) | ((uint64_t)(U4LE(buf, off)) & 0xFFFFFFFF))
+    (((uint64_t) (U4LE(buf, off + 4)) << 32) | ((uint64_t) (U4LE(buf, off)) & 0xFFFFFFFF))
 
 // txnDecoderState_e indicates a transaction decoder status
 typedef enum {
@@ -36,6 +36,18 @@ typedef enum {
     TXN_ELEM_MINER_FEE,
     TXN_ELEM_ARB_DATA,
     TXN_ELEM_TXN_SIG,
+
+    V2TXN_ELEM_SC_INPUT,
+    V2TXN_ELEM_SC_OUTPUT,
+    V2TXN_ELEM_SF_INPUT,
+    V2TXN_ELEM_SF_OUTPUT,
+    V2TXN_ELEM_FC,
+    V2TXN_ELEM_FC_REVISION,
+    V2TXN_ELEM_FC_RESOLUTION,
+    V2TXN_ELEM_ATTESTATION,
+    V2TXN_ELEM_ARB_DATA,
+    V2TXN_ELEM_NEW_FOUNDATION_ADDR,
+    V2TXN_ELEM_MINER_FEE,
 } txnElemType_e;
 
 typedef struct {

@@ -32,6 +32,7 @@
 #include "sia.h"
 #include "sia_ux.h"
 #include "txn.h"
+#include "v2txn.h"
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
@@ -134,7 +135,8 @@ static void fmtTxnElem(void) {
     txn_state_t *txn = &ctx->txn;
 
     switch (txn->elements[ctx->elementIndex].elemType) {
-        case TXN_ELEM_SC_OUTPUT: {
+        case TXN_ELEM_SC_OUTPUT:
+        case V2TXN_ELEM_SC_OUTPUT: {
             memmove(ctx->labelStr, "SC Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             // An element can have multiple screens. For each siacoin output, the
@@ -154,7 +156,8 @@ static void fmtTxnElem(void) {
             }
             break;
         }
-        case TXN_ELEM_SF_OUTPUT: {
+        case TXN_ELEM_SF_OUTPUT:
+        case V2TXN_ELEM_SF_OUTPUT: {
             memmove(ctx->labelStr, "SF Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             if (ctx->elemPart == 0) {
@@ -170,7 +173,8 @@ static void fmtTxnElem(void) {
             }
             break;
         }
-        case TXN_ELEM_MINER_FEE: {
+        case TXN_ELEM_MINER_FEE:
+        case V2TXN_ELEM_MINER_FEE: {
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
@@ -229,7 +233,14 @@ uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t
         uint32_t changeIndex = U4LE(dataBuffer, 0);
         dataBuffer += 4;
         dataLength -= 4;
-        txn_init(&ctx->txn, sigIndex, changeIndex);
+        bool v2 = dataBuffer;
+        dataBuffer += 1;
+        dataLength -= 1;
+        if (v2) {
+            v2txn_init(&ctx->txn, sigIndex, changeIndex);
+        } else {
+            txn_init(&ctx->txn, sigIndex, changeIndex);
+        }
 
         // Set ctx->sign according to P2.
         ctx->sign = (p2 & P2_SIGN_HASH);
