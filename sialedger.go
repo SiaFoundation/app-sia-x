@@ -9,15 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net"
 	"os"
 	"strconv"
 
-	"github.com/karalabe/hid"
-	"gitlab.com/NebulousLabs/Sia/types"
+	"github.com/bearsh/hid"
+	"go.sia.tech/core/types"
 	"lukechampine.com/flagg"
 )
 
@@ -239,15 +238,15 @@ func (n *Nano) GetPublicKey(index uint32) (pubkey [32]byte, err error) {
 	return
 }
 
-func (n *Nano) GetAddress(index uint32) (addr types.UnlockHash, err error) {
+func (n *Nano) GetAddress(index uint32) (addr types.Address, err error) {
 	encIndex := make([]byte, 4)
 	binary.LittleEndian.PutUint32(encIndex, index)
 
 	resp, err := n.Exchange(cmdGetPublicKey, 0, p2DisplayAddress, encIndex)
 	if err != nil {
-		return types.UnlockHash{}, err
+		return types.Address{}, err
 	}
-	err = addr.LoadString(string(resp[32:]))
+	err = addr.UnmarshalText(resp[32:])
 	return
 }
 
@@ -266,11 +265,15 @@ func (n *Nano) SignHash(hash [32]byte, keyIndex uint32) (sig [64]byte, err error
 }
 
 func (n *Nano) CalcTxnHash(txn types.Transaction, sigIndex uint16, changeIndex uint32) (hash [32]byte, err error) {
-	buf := new(bytes.Buffer)
+	buf := bytes.NewBuffer(nil)
 	binary.Write(buf, binary.LittleEndian, uint32(0)) // keyIndex; ignored since we are not signing
 	binary.Write(buf, binary.LittleEndian, sigIndex)
 	binary.Write(buf, binary.LittleEndian, changeIndex)
-	txn.MarshalSia(buf)
+	enc := types.NewEncoder(buf)
+	txn.EncodeTo(enc)
+	if err := enc.Flush(); err != nil {
+		return [32]byte{}, fmt.Errorf("couldn't encode transaction: %w", err)
+	}
 
 	var resp []byte
 	for buf.Len() > 0 {
@@ -290,11 +293,15 @@ func (n *Nano) CalcTxnHash(txn types.Transaction, sigIndex uint16, changeIndex u
 }
 
 func (n *Nano) SignTxn(txn types.Transaction, sigIndex uint16, keyIndex, changeIndex uint32) (sig [64]byte, err error) {
-	buf := new(bytes.Buffer)
+	buf := bytes.NewBuffer(nil)
 	binary.Write(buf, binary.LittleEndian, keyIndex)
 	binary.Write(buf, binary.LittleEndian, sigIndex)
 	binary.Write(buf, binary.LittleEndian, changeIndex)
-	txn.MarshalSia(buf)
+	enc := types.NewEncoder(buf)
+	txn.EncodeTo(enc)
+	if err := enc.Flush(); err != nil {
+		return [64]byte{}, fmt.Errorf("couldn't encode transaction: %w", err)
+	}
 
 	var resp []byte
 	for buf.Len() > 0 {
@@ -318,7 +325,7 @@ func OpenNanoHID() (*Nano, error) {
 		ledgerVendorID       = 0x2c97
 		ledgerNanoSProductID = 0x0001
 		ledgerNanoXProductID = 0x0004
-		ledgerStaxProductID = 0x0006
+		ledgerStaxProductID  = 0x0006
 	)
 
 	// search for Nano S
@@ -328,9 +335,9 @@ func OpenNanoHID() (*Nano, error) {
 	// search for Stax
 	staxDevices := hid.Enumerate(ledgerVendorID, ledgerStaxProductID)
 	if len(nanoSDevices) == 0 && len(nanoXDevices) == 0 && len(staxDevices) == 0 {
-		return nil, errors.New("Device not detected")
+		return nil, errors.New("device not detected")
 	} else if len(nanoSDevices) > 1 || len(nanoXDevices) > 1 || len(staxDevices) > 1 {
-		return nil, errors.New("Unexpected error -- Is the Sia wallet app running?")
+		return nil, errors.New("unexpected error -- Is the Sia wallet app running?")
 	}
 
 	var err error
@@ -511,7 +518,7 @@ func main() {
 		if err != nil {
 			log.Fatalln("Couldn't get public key:", err)
 		}
-		pk := types.Ed25519PublicKey(pubkey)
+		pk := types.PublicKey(pubkey)
 		fmt.Println(pk.String())
 
 	case hashCmd:
@@ -532,14 +539,14 @@ func main() {
 		if err != nil {
 			log.Fatalln("Couldn't get signature:", err)
 		}
-		fmt.Println(base64.StdEncoding.EncodeToString(sig[:]))
+		fmt.Println(types.Signature(sig).String())
 
 	case txnCmd:
 		if (*txnHash && len(args) != 2) || (!*txnHash && len(args) != 3) {
 			txnCmd.Usage()
 			return
 		}
-		txnBytes, err := ioutil.ReadFile(args[0])
+		txnBytes, err := os.ReadFile(args[0])
 		if err != nil {
 			log.Fatalln("Couldn't read transaction:", err)
 		}
