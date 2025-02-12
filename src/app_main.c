@@ -127,9 +127,8 @@ static const nbgl_content_t contents[SETTING_CONTENTS_NB] = {
      .content.switchesList.switches = switches,
      .contentActionCallback = controls_callback}};
 
-static const nbgl_genericContents_t settingContents = {.callbackCallNeeded = false,
-                                                       .contentsList = contents,
-                                                       .nbContents = SETTING_CONTENTS_NB};
+static const nbgl_genericContents_t settingContents = {
+    .callbackCallNeeded = false, .contentsList = contents, .nbContents = SETTING_CONTENTS_NB};
 
 static void controls_callback(int token, uint8_t index, int page) {
     UNUSED(index);
