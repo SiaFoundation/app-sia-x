@@ -213,6 +213,7 @@ uint16_t handleCalcTxnHash(
         // NOTE: ctx->initialized is set to false when the Sia app loads.
         if (ctx->initialized) {
             zero_ctx();
+            PRINTF("RETURNING SW_IMPROPER_INIT\n");
             return SW_IMPROPER_INIT;
         }
         zero_ctx();
