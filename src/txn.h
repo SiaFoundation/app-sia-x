@@ -32,6 +32,18 @@ typedef enum {
     TXN_ELEM_MINER_FEE,
     TXN_ELEM_ARB_DATA,
     TXN_ELEM_TXN_SIG,
+
+    V2TXN_ELEM_SC_INPUT,
+    V2TXN_ELEM_SC_OUTPUT,
+    V2TXN_ELEM_SF_INPUT,
+    V2TXN_ELEM_SF_OUTPUT,
+    V2TXN_ELEM_FC,
+    V2TXN_ELEM_FC_REVISION,
+    V2TXN_ELEM_FC_RESOLUTION,
+    V2TXN_ELEM_ATTESTATION,
+    V2TXN_ELEM_ARB_DATA,
+    V2TXN_ELEM_NEW_FOUNDATION_ADDR,
+    V2TXN_ELEM_MINER_FEE,
 } txnElemType_e;
 
 typedef struct {
@@ -54,6 +66,8 @@ typedef struct {
     uint16_t lastSiafundOutputIndex;
 #endif
     txn_elem_t elements[MAX_ELEMS];  // only elements that will be displayed
+
+    uint64_t fields;  // v2 fields
 
     uint64_t sliceLen;    // most-recently-seen slice length prefix
     uint16_t sliceIndex;  // offset within current element slice

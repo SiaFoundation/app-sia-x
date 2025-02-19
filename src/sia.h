@@ -13,6 +13,15 @@
 #define SW_INS_NOT_SUPPORTED 0x6D00
 #define SW_OK                0x9000
 
+// The APDU protocol uses a single-byte instruction code (INS) to specify
+// which command should be executed. We'll use this code to dispatch on a
+// table of function pointers.
+#define INS_GET_VERSION    0x01
+#define INS_GET_PUBLIC_KEY 0x02
+#define INS_SIGN_HASH      0x04
+#define INS_GET_TXN_HASH   0x08
+#define INS_GET_V2TXN_HASH 0x10
+
 // APDU parameters
 #define P1_FIRST        0x00  // 1st packet of multi-packet transfer
 #define P1_MORE         0x80  // nth packet of multi-packet transfer

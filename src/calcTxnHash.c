@@ -32,6 +32,7 @@
 #include "sia.h"
 #include "sia_ux.h"
 #include "txn.h"
+#include "v2txn.h"
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
 
@@ -134,7 +135,8 @@ static void fmtTxnElem(void) {
     txn_state_t *txn = &ctx->txn;
 
     switch (txn->elements[ctx->elementIndex].elemType) {
-        case TXN_ELEM_SC_OUTPUT: {
+        case V2TXN_ELEM_SC_OUTPUT:
+        case TXN_ELEM_SC_OUTPUT:
             memmove(ctx->labelStr, "SC Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             // An element can have multiple screens. For each siacoin output, the
@@ -153,8 +155,8 @@ static void fmtTxnElem(void) {
                 ctx->elementIndex++;
             }
             break;
-        }
-        case TXN_ELEM_SF_OUTPUT: {
+        case V2TXN_ELEM_SF_OUTPUT:
+        case TXN_ELEM_SF_OUTPUT:
             memmove(ctx->labelStr, "SF Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             if (ctx->elemPart == 0) {
@@ -169,8 +171,8 @@ static void fmtTxnElem(void) {
                 ctx->elementIndex++;
             }
             break;
-        }
-        case TXN_ELEM_MINER_FEE: {
+        case V2TXN_ELEM_MINER_FEE:
+        case TXN_ELEM_MINER_FEE:
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
@@ -182,13 +184,11 @@ static void fmtTxnElem(void) {
             ctx->elemPart = 0;
             ctx->elementIndex++;
             break;
-        }
-        default: {
+        default:
             // This should never happen.
             io_send_sw(SW_DEVELOPER_ERR);
             ui_idle();
             break;
-        }
     }
 }
 
@@ -199,7 +199,8 @@ static void zero_ctx(void) {
 // handleCalcTxnHash reads a signature index and a transaction, calculates the
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is displayed piece-wise to the user.
-uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
+uint16_t handleCalcTxnHash(
+    uint8_t ins, uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
     if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
         return SW_INVALID_PARAM;
     }
@@ -223,14 +224,25 @@ uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t
         ctx->keyIndex = U4LE(dataBuffer, 0);  // NOTE: ignored if !ctx->sign
         dataBuffer += 4;
         dataLength -= 4;
-        uint16_t sigIndex = U2LE(dataBuffer, 0);
+        const uint16_t sigIndex = U2LE(dataBuffer, 0);
         dataBuffer += 2;
         dataLength -= 2;
-        uint32_t changeIndex = U4LE(dataBuffer, 0);
+        const uint32_t changeIndex = U4LE(dataBuffer, 0);
         dataBuffer += 4;
         dataLength -= 4;
-        txn_init(&ctx->txn, sigIndex, changeIndex);
+        if (ins == INS_GET_TXN_HASH) {
+            txn_init(&ctx->txn, sigIndex, changeIndex);
+        } else {
+            // version
+            dataBuffer += 1;
+            dataLength -= 1;
 
+            const uint64_t fields = U8LE(dataBuffer, 0);
+            dataBuffer += 8;
+            dataLength -= 8;
+            // PRINTF("dataLength: %d\n", dataLength);
+            v2txn_init(&ctx->txn, sigIndex, changeIndex, fields);
+        }
         // Set ctx->sign according to P2.
         ctx->sign = (p2 & P2_SIGN_HASH);
 
@@ -245,12 +257,17 @@ uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t
     }
 
     // Add the new data to transaction decoder.
-    txn_update(&ctx->txn, dataBuffer, dataLength);
+    if (ins == INS_GET_TXN_HASH) {
+        txn_update(&ctx->txn, dataBuffer, dataLength);
+    } else {
+        PRINTF("v2 update\n");
+        v2txn_update(&ctx->txn, dataBuffer, dataLength);
+    }
 
     // Attempt to decode the next element of the transaction. Note that this
     // code is essentially identical to ui_calcTxnHash_elem_button. Sadly,
     // there doesn't seem to be a clean way to avoid this duplication.
-    switch (txn_parse(&ctx->txn)) {
+    switch ((ins == INS_GET_TXN_HASH) ? txn_parse(&ctx->txn) : v2txn_parse(&ctx->txn)) {
         case TXN_STATE_ERR:
             // don't leave state lingering
             zero_ctx();

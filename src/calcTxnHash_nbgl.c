@@ -120,7 +120,8 @@ static void zero_ctx(void) {
 // handleCalcTxnHash reads a signature index and a transaction, calculates the
 // SigHash of the transaction, and optionally signs the hash using a specified
 // key. The transaction is displayed piece-wise to the user.
-uint16_t handleCalcTxnHash(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
+uint16_t handleCalcTxnHash(
+    uint8_t ins, uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
     nbgl_contentTagValueList_t contentTagValueList = {0};
     uint16_t i = 0;
 

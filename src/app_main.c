@@ -172,17 +172,10 @@ unsigned int io_reject(void) {
     return 0;
 }
 
-// The APDU protocol uses a single-byte instruction code (INS) to specify
-// which command should be executed. We'll use this code to dispatch on a
-// table of function pointers.
-#define INS_GET_VERSION    0x01
-#define INS_GET_PUBLIC_KEY 0x02
-#define INS_SIGN_HASH      0x04
-#define INS_GET_TXN_HASH   0x08
-
 // This is the function signature for a command handler.
 // Returns 0 on success.
-typedef uint16_t handler_fn_t(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength);
+typedef uint16_t handler_fn_t(
+    uint8_t ins, uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength);
 
 handler_fn_t handleGetVersion;
 handler_fn_t handleGetPublicKey;
@@ -198,6 +191,7 @@ static handler_fn_t *lookupHandler(uint8_t ins) {
         case INS_SIGN_HASH:
             return handleSignHash;
         case INS_GET_TXN_HASH:
+        case INS_GET_V2TXN_HASH:
             return handleCalcTxnHash;
         default:
             return NULL;
@@ -281,7 +275,7 @@ void app_main() {
             continue;
         }
 
-        const uint16_t e = handlerFn(cmd.p1, cmd.p2, cmd.data, cmd.lc);
+        const uint16_t e = handlerFn(cmd.ins, cmd.p1, cmd.p2, cmd.data, cmd.lc);
         if (e != 0) {
             send_error_code(e);
             continue;
