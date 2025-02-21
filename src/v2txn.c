@@ -41,13 +41,11 @@ static void writeUint64BE(uint8_t *buf, uint64_t value) {
 }
 
 static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
-    need_at_least(txn, 16);  // 2 * sizeof(uint64_t) = 16
-
     const uint64_t lo = readInt(txn);
     const uint64_t hi = readInt(txn);
 
     // Encode in the same format as V1 (big-endian, trimmed)
-    uint8_t buf[16];
+    uint8_t buf[16] = {0};
     writeUint64BE(buf, hi);
     writeUint64BE(buf + 8, lo);
 
@@ -65,8 +63,9 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
 }
 
 static void writeUint64Currency(uint64_t value, uint8_t *outVal) {
-    uint8_t buf[8];
-    writeUint64BE(buf, value);  // Convert to big-endian
+    // Convert to big-endian
+    uint8_t buf[8] = {0};
+    writeUint64BE(buf, value);
 
     // Trim leading zeros
     uint8_t *trimmed = buf;
@@ -98,35 +97,24 @@ static void __txn_next_elem(txn_state_t *txn) {
     // if we're on a slice boundary, read the next length prefix and bump the
     // element type
     while (txn->sliceIndex == txn->sliceLen) {
-        if (txn->elementIndex > 0 &&
-            txn->elements[txn->elementIndex - 1].elemType == V2TXN_ELEM_MINER_FEE) {
+        if (txn->elements[txn->elementIndex].elemType == V2TXN_ELEM_MINER_FEE) {
             // store final hash
             blake2b_final(&txn->blake, txn->sigHash, sizeof(txn->sigHash));
             THROW(TXN_STATE_FINISHED);
         }
 
-        txn->elements[txn->elementIndex].elemType++;
-        if (txn->elements[txn->elementIndex].elemType <= V2TXN_ELEM_ARB_DATA) {
+        if ((txn->elements[txn->elementIndex].elemType + 1) <= V2TXN_ELEM_ARB_DATA) {
             txn->sliceLen = readInt(txn);
             txn->sliceIndex = 0;
             advance(txn);
+            txn->elements[txn->elementIndex].elemType++;
         } else {
             txn->sliceLen = 0;
             txn->sliceIndex = 0;
-
-            if (txn->elements[txn->elementIndex].elemType == V2TXN_ELEM_MINER_FEE) {
-                break;
-            } else if (txn->elements[txn->elementIndex].elemType ==
-                       V2TXN_ELEM_NEW_FOUNDATION_ADDR) {
-                need_at_least(txn, 1);
-                const uint8_t set = txn->buf[txn->pos];
-                if (set) {
-                    // we do not support displaying new foundation address
-                    THROW(TXN_STATE_ERR);
-                }
-                seek(txn, 1);
-                advance(txn);
-            }
+            txn->elements[txn->elementIndex].elemType++;
+            // Either new foundation address or miner fee, thesse require their
+            // own logic below since they are not slices.
+            break;
         }
     }
 
@@ -167,6 +155,8 @@ static void __txn_next_elem(txn_state_t *txn) {
             memmove(txn->elements[txn->elementIndex].outAddr, "[Miner Fee]", 12);
             advance(txn);
 
+            txn->elements[txn->elementIndex + 1].elemType =
+                txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
             return;
 
@@ -185,13 +175,24 @@ static void __txn_next_elem(txn_state_t *txn) {
             txn->sliceIndex++;
             return;
 
-        // these elements should not be present
+        case V2TXN_ELEM_NEW_FOUNDATION_ADDR:
+            need_at_least(txn, 1);
+            const uint8_t set = txn->buf[txn->pos];
+            if (set == 1) {
+                // we do not support displaying new foundation address
+                THROW(TXN_STATE_ERR);
+            }
+            seek(txn, 1);
+            advance(txn);
+
+            return;
+
+            // these elements should not be present
         case V2TXN_ELEM_FC:
         case V2TXN_ELEM_FC_REVISION:
         case V2TXN_ELEM_FC_RESOLUTION:
         case V2TXN_ELEM_ATTESTATION:
         case V2TXN_ELEM_ARB_DATA:
-        case V2TXN_ELEM_NEW_FOUNDATION_ADDR:
             if (txn->sliceLen != 0) {
                 THROW(TXN_STATE_ERR);
             }
@@ -215,12 +216,12 @@ void v2txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
     blake2b_init(&txn->blake);
 
     {
-        static const uint8_t sigInput[14] =
+        static const uint8_t sigInput[] =
             {'s', 'i', 'a', '/', 's', 'i', 'g', '/', 'i', 'n', 'p', 'u', 't', '|'};
         blake2b_update(&txn->blake, sigInput, sizeof(sigInput));
     }
     {
-        static const uint8_t replayPrefix[1] = {2};
+        static const uint8_t replayPrefix[] = {2};
         blake2b_update(&txn->blake, replayPrefix, sizeof(replayPrefix));
     }
 }

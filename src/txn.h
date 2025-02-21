@@ -56,9 +56,9 @@ typedef struct {
 // txn_state_t is a helper object for computing the SigHash of a streamed
 // transaction.
 typedef struct {
-    uint8_t buf[2 * 255];  // holds raw tx bytes; large enough for two 0xFF reads
-    uint16_t buflen;       // number of valid bytes in buf
-    uint16_t pos;          // mid-decode offset; reset to 0 after each elem
+    uint8_t buf[510];  // holds raw tx bytes; large enough for two 0xFF reads
+    uint16_t buflen;   // number of valid bytes in buf
+    uint16_t pos;      // mid-decode offset; reset to 0 after each elem
 
     uint16_t elementIndex;
 #ifdef HAVE_NBGL
