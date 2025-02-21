@@ -213,7 +213,6 @@ uint16_t handleCalcTxnHash(
         // NOTE: ctx->initialized is set to false when the Sia app loads.
         if (ctx->initialized) {
             zero_ctx();
-            PRINTF("RETURNING SW_IMPROPER_INIT\n");
             return SW_IMPROPER_INIT;
         }
         zero_ctx();
@@ -234,15 +233,7 @@ uint16_t handleCalcTxnHash(
         if (ins == INS_GET_TXN_HASH) {
             txn_init(&ctx->txn, sigIndex, changeIndex);
         } else {
-            // version
-            dataBuffer += 1;
-            dataLength -= 1;
-
-            const uint64_t fields = U8LE(dataBuffer, 0);
-            dataBuffer += 8;
-            dataLength -= 8;
-            // PRINTF("dataLength: %d\n", dataLength);
-            v2txn_init(&ctx->txn, sigIndex, changeIndex, fields);
+            v2txn_init(&ctx->txn, sigIndex, changeIndex);
         }
         // Set ctx->sign according to P2.
         ctx->sign = (p2 & P2_SIGN_HASH);
@@ -261,7 +252,6 @@ uint16_t handleCalcTxnHash(
     if (ins == INS_GET_TXN_HASH) {
         txn_update(&ctx->txn, dataBuffer, dataLength);
     } else {
-        PRINTF("v2 update\n");
         v2txn_update(&ctx->txn, dataBuffer, dataLength);
     }
 

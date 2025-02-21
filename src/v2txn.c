@@ -19,7 +19,6 @@ static void seek(txn_state_t *txn, uint64_t n) {
 }
 
 static void advance(txn_state_t *txn) {
-    // if elem is covered, add it to the hash
     blake2b_update(&txn->blake, txn->buf, txn->pos);
 
     txn->buflen -= txn->pos;
@@ -65,113 +64,29 @@ static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
     }
 }
 
+static void writeUint64Currency(uint64_t value, uint8_t *outVal) {
+    uint8_t buf[8];
+    writeUint64BE(buf, value);  // Convert to big-endian
+
+    // Trim leading zeros
+    uint8_t *trimmed = buf;
+    while (trimmed < buf + 8 && *trimmed == 0) {
+        trimmed++;
+    }
+
+    size_t valLen = buf + 8 - trimmed;
+    if (outVal) {
+        outVal[0] = (uint8_t) valLen;
+        memmove(outVal + 1, trimmed, valLen);
+    }
+}
+
 static void readHash(txn_state_t *txn, char *outAddr) {
     need_at_least(txn, 32);
     if (outAddr) {
         memmove(outAddr, txn->buf + txn->pos, 32);
     }
     seek(txn, 32);
-}
-
-static void readPrefixedBytes(txn_state_t *txn) {
-    uint64_t len = readInt(txn);
-    seek(txn, len);
-}
-
-static void readUnlockConditions(txn_state_t *txn) {
-    readInt(txn);                     // Timelock
-    uint64_t numKeys = readInt(txn);  // PublicKeys
-    while (numKeys-- > 0) {
-        seek(txn, 16);           // Algorithm
-        readPrefixedBytes(txn);  // Key
-    }
-    readInt(txn);  // SignaturesRequired
-}
-
-static void readMerkleProof(txn_state_t *txn) {
-    const uint64_t len = readInt(txn);  // number of elements in the proof array
-    for (uint64_t i = 0; i < len; i++) {
-        readHash(txn, NULL);
-    }
-}
-
-static void readStateElement(txn_state_t *txn) {
-    readInt(txn);          // LeafIndex
-    readMerkleProof(txn);  // MerkleProof
-}
-
-static void readPublicKey(txn_state_t *txn) {
-    seek(txn, 32);
-}
-
-static void readSignatures(txn_state_t *txn) {
-    const uint64_t len = readInt(txn);
-    for (uint64_t i = 0; i < len; i++) {
-        seek(txn, 64);
-    }
-}
-
-static void readPreimages(txn_state_t *txn) {
-    const uint64_t len = readInt(txn);
-    for (uint64_t i = 0; i < len; i++) {
-        seek(txn, 32);
-    }
-}
-
-static void readSpendPolicy(txn_state_t *txn) {
-    need_at_least(txn, 1);
-    const uint8_t typ = txn->buf[txn->pos];
-    seek(txn, 1);
-
-    switch (typ) {
-        case OP_INVALID:
-            PRINTF("OP_INVALID\n");
-            THROW(TXN_STATE_ERR);
-            break;
-        case OP_ABOVE:
-            PRINTF("OP_ABOVE\n");
-            readInt(txn);  // uint64
-            break;
-        case OP_AFTER:
-            PRINTF("OP_AFTER\n");
-            readInt(txn);  // time.Time encoded as uint64
-            break;
-        case OP_PUBLICKEY:
-            PRINTF("OP_PUBLICKEY\n");
-            readPublicKey(txn);  // types.PublicKey
-            break;
-        case OP_HASH:
-            PRINTF("OP_HASH\n");
-            readHash(txn, NULL);  // types.Hash256
-            break;
-        case OP_THRESHOLD:
-            PRINTF("OP_THRESHOLD\n");
-            need_at_least(txn, 2);
-            const uint8_t n = txn->buf[txn->pos];
-            const uint8_t of = txn->buf[txn->pos + 1];
-            seek(txn, 2);
-
-            for (uint8_t i = 0; i < n; i++) {
-                readSpendPolicy(txn);
-            }
-            break;
-        case OP_OPAQUE:
-            PRINTF("OP_OPAQUE\n");
-            readHash(txn, NULL);  // types.Address = types.Hash256
-            break;
-        case OP_UNLOCKCONDITIONS:
-            PRINTF("OP_UNLOCKCONDITIONS\n");
-            readUnlockConditions(txn);  // types.UnlockConditions
-            break;
-    }
-}
-
-static void addReplayProtection(cx_blake2b_t *S) {
-    // The official Sia app only signs transactions on the
-    // Foundation-supported chain. To use the app on a different chain,
-    // recompile the app with a different replayPrefix.
-    static uint8_t const replayPrefix[] = {1};
-    blake2b_update(S, replayPrefix, 1);
 }
 
 // throws txnDecoderState_e
@@ -183,44 +98,41 @@ static void __txn_next_elem(txn_state_t *txn) {
     // if we're on a slice boundary, read the next length prefix and bump the
     // element type
     while (txn->sliceIndex == txn->sliceLen) {
-        PRINTF("BBBBBB\n");
-        if (txn->elements[txn->elementIndex].elemType == V2TXN_ELEM_MINER_FEE) {
+        if (txn->elementIndex > 0 &&
+            txn->elements[txn->elementIndex - 1].elemType == V2TXN_ELEM_MINER_FEE) {
             // store final hash
-            PRINTF("FINISHED!\n");
             blake2b_final(&txn->blake, txn->sigHash, sizeof(txn->sigHash));
             THROW(TXN_STATE_FINISHED);
         }
 
-        // skip over field slices with no elements
-        do {
-            txn->elements[txn->elementIndex].elemType++;
-            PRINTF("elemType: %d, field set: %d\n",
-                   txn->elements[txn->elementIndex].elemType,
-                   (txn->fields &
-                    (1 << (txn->elements[txn->elementIndex].elemType - V2TXN_ELEM_SC_INPUT))) != 0);
-        } while (txn->elements[txn->elementIndex].elemType < V2TXN_ELEM_MINER_FEE &&
-                 (txn->fields &
-                  (1 << (txn->elements[txn->elementIndex].elemType - V2TXN_ELEM_SC_INPUT))) == 0);
-
+        txn->elements[txn->elementIndex].elemType++;
         if (txn->elements[txn->elementIndex].elemType <= V2TXN_ELEM_ARB_DATA) {
             txn->sliceLen = readInt(txn);
             txn->sliceIndex = 0;
+            advance(txn);
         } else {
             txn->sliceLen = 0;
             txn->sliceIndex = 0;
-        }
 
-        advance(txn);
+            if (txn->elements[txn->elementIndex].elemType == V2TXN_ELEM_MINER_FEE) {
+                break;
+            } else if (txn->elements[txn->elementIndex].elemType ==
+                       V2TXN_ELEM_NEW_FOUNDATION_ADDR) {
+                need_at_least(txn, 1);
+                const uint8_t set = txn->buf[txn->pos];
+                if (set) {
+                    // we do not support displaying new foundation address
+                    THROW(TXN_STATE_ERR);
+                }
+                seek(txn, 1);
+                advance(txn);
+            }
+        }
     }
-    PRINTF("elemType: %d, txn->fields: %d\n",
-           txn->elements[txn->elementIndex].elemType,
-           txn->fields);
 
     switch (txn->elements[txn->elementIndex].elemType) {
         // these elements should be displayed
         case V2TXN_ELEM_SC_OUTPUT:
-            PRINTF("V2TXN_ELEM_SC_OUTPUT\n");
-
             readCurrency(txn, txn->elements[txn->elementIndex].outVal);        // Value
             readHash(txn, (char *) txn->elements[txn->elementIndex].outAddr);  // UnlockHash
             advance(txn);
@@ -237,10 +149,9 @@ static void __txn_next_elem(txn_state_t *txn) {
             txn->elementIndex++;
             return;
 
-        case V2TXN_ELEM_SF_OUTPUT:
-            PRINTF("V2TXN_ELEM_SF_OUTPUT\n");
-
-            readInt(txn);                                                      // Value
+        case V2TXN_ELEM_SF_OUTPUT: {
+            const uint64_t value = readInt(txn);  // Value
+            writeUint64Currency(value, txn->elements[txn->elementIndex].outVal);
             readHash(txn, (char *) txn->elements[txn->elementIndex].outAddr);  // UnlockHash
             advance(txn);
 
@@ -249,58 +160,28 @@ static void __txn_next_elem(txn_state_t *txn) {
                 txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
             return;
+        }
 
         case V2TXN_ELEM_MINER_FEE:
-            PRINTF("V2TXN_ELEM_MINER_FEE\n");
-
             readCurrency(txn, txn->elements[txn->elementIndex].outVal);  // Value
             memmove(txn->elements[txn->elementIndex].outAddr, "[Miner Fee]", 12);
             advance(txn);
+
+            txn->elementIndex++;
             return;
 
         // these elements should be decoded, but not displayed
         case V2TXN_ELEM_SC_INPUT:
-            PRINTF("V2TXN_ELEM_SC_INPUT\n");
-
-            PRINTF("1\n");
             readHash(txn, NULL);  // Parent.ID
-            PRINTF("2\n");
-            readStateElement(txn);  // Parent.StateElement
-            PRINTF("3\n");
-            readCurrency(txn, NULL);  // Parent.SiacoinOutput.Value
-            PRINTF("4\n");
-            readHash(txn, NULL);  // Parent.SiacoinOutput.UnlockHash
-            PRINTF("5\n");
-            readInt(txn);  // Parent.MaturityHeight
-            PRINTF("6\n");
-
-            readSpendPolicy(txn);  // SatisfiedPolicy.Policy
-            PRINTF("7\n");
-            readSignatures(txn);  // SatisfiedPolicy.Signatures
-            PRINTF("8\n");
-            readPreimages(txn);  // SatisfiedPolicy.Preimages
-            PRINTF("9\n");
-
-            addReplayProtection(&txn->blake);
             advance(txn);
+
             txn->sliceIndex++;
             return;
 
         case V2TXN_ELEM_SF_INPUT:
-            PRINTF("V2TXN_ELEM_SF_INPUT\n");
-
-            readHash(txn, NULL);      // Parent.ID
-            readStateElement(txn);    // Parent.StateElement
-            readInt(txn);             // Parent.SiafundOutput.Value
-            readHash(txn, NULL);      // Parent.SiafundOutput.UnlockHash
-            readCurrency(txn, NULL);  // Parent.ClaimStart
-
-            readSpendPolicy(txn);  // SatisfiedPolicy.Policy
-            readSignatures(txn);   // SatisfiedPolicy.Signatures
-            readPreimages(txn);    // SatisfiedPolicy.Preimages
-
-            addReplayProtection(&txn->blake);
+            readHash(txn, NULL);  // Parent.ID
             advance(txn);
+
             txn->sliceIndex++;
             return;
 
@@ -311,7 +192,6 @@ static void __txn_next_elem(txn_state_t *txn) {
         case V2TXN_ELEM_ATTESTATION:
         case V2TXN_ELEM_ARB_DATA:
         case V2TXN_ELEM_NEW_FOUNDATION_ADDR:
-            PRINTF("ERRORING!");
             if (txn->sliceLen != 0) {
                 THROW(TXN_STATE_ERR);
             }
@@ -319,10 +199,9 @@ static void __txn_next_elem(txn_state_t *txn) {
     }
 }
 
-void v2txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex, uint64_t fields) {
+void v2txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
     memset(txn, 0, sizeof(txn_state_t));
     txn->sigIndex = sigIndex;
-    txn->fields = fields;
 
     txn->elementIndex = 0;
     txn->elements[txn->elementIndex].elemType =
@@ -334,6 +213,16 @@ void v2txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex, uint6
 
     // initialize hash state
     blake2b_init(&txn->blake);
+
+    {
+        static const uint8_t sigInput[14] =
+            {'s', 'i', 'a', '/', 's', 'i', 'g', '/', 'i', 'n', 'p', 'u', 't', '|'};
+        blake2b_update(&txn->blake, sigInput, sizeof(sigInput));
+    }
+    {
+        static const uint8_t replayPrefix[1] = {2};
+        blake2b_update(&txn->blake, replayPrefix, sizeof(replayPrefix));
+    }
 }
 
 void v2txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen) {

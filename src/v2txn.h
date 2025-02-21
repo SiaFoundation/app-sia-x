@@ -16,7 +16,7 @@ typedef enum {
 
 // v2Txn_init initializes a transaction decoder, preparing it to calculate the
 // requested SigHash.
-void v2txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex, uint64_t fields);
+void v2txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex);
 
 // v2Txn_update adds data to a transaction decoder.
 void v2txn_update(txn_state_t *txn, uint8_t *in, uint8_t inlen);

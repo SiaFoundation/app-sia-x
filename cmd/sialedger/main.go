@@ -108,7 +108,6 @@ type apduFramer struct {
 }
 
 func (af *apduFramer) Exchange(apdu APDU) ([]byte, error) {
-	log.Printf("Sending ins=%d, p1=%d, len(payload)=%d", apdu.INS, apdu.P1, len(apdu.Payload))
 	if len(apdu.Payload) > 255 {
 		panic("APDU payload cannot exceed 255 bytes")
 	}
@@ -137,7 +136,6 @@ type tcpExchanger struct {
 }
 
 func (e *tcpExchanger) Exchange(apdu APDU) ([]byte, error) {
-	log.Printf("Sending ins=%d, p1=%d, len(payload)=%d", apdu.INS, apdu.P1, len(apdu.Payload))
 	encoded := apdu.Encode()
 
 	var lenBuf [4]byte
@@ -557,7 +555,7 @@ func main() {
 			if err := json.Unmarshal(txnBytes, &txn); err != nil {
 				log.Fatalln("Couldn't decode transaction:", err)
 			}
-			txn.EncodeTo(e)
+			types.V2TransactionSemantics(txn).EncodeTo(e)
 			op = cmdCalcV2TxnHash
 		} else {
 			var txn types.Transaction
