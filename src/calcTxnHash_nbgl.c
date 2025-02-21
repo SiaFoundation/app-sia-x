@@ -13,6 +13,7 @@
 #include "sia.h"
 #include "sia_ux.h"
 #include "txn.h"
+#include "v2txn.h"
 #include "nbgl_use_case.h"
 
 static calcTxnHashContext_t *ctx = &global.calcTxnHashContext;
