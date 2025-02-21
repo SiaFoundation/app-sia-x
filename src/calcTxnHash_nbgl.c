@@ -55,6 +55,7 @@ static nbgl_contentTagValue_t *getTagValuePairs(uint8_t pairIndex) {
 
     switch (element_type(txn, pairIndex)) {
         case TXN_ELEM_SC_OUTPUT:
+        case V2TXN_ELEM_SC_OUTPUT:
             // For each siacoin output, the user needs to see both
             // the destination address and the amount.
             ctx->elementIndex = pairIndex / 2;
@@ -71,6 +72,7 @@ static nbgl_contentTagValue_t *getTagValuePairs(uint8_t pairIndex) {
             contentTagValue.forcePageStart = false;
             break;
         case TXN_ELEM_SF_OUTPUT:
+        case V2TXN_ELEM_SF_OUTPUT:
             // For each siacoin output, the user needs to see both
             // the destination address and the amount.
             ctx->elementIndex = pairIndex / 2;
@@ -87,6 +89,7 @@ static nbgl_contentTagValue_t *getTagValuePairs(uint8_t pairIndex) {
             break;
 
         case TXN_ELEM_MINER_FEE:
+        case V2TXN_ELEM_MINER_FEE:
             lastOutputIndex = txn->lastSiafundOutputIndex;
             if (lastOutputIndex == USHRT_MAX) {
                 lastOutputIndex = txn->lastSiacoinOutputIndex;
@@ -154,7 +157,11 @@ uint16_t handleCalcTxnHash(
         uint32_t changeIndex = U4LE(dataBuffer, 0);
         dataBuffer += 4;
         dataLength -= 4;
-        txn_init(&ctx->txn, sigIndex, changeIndex);
+        if (ins == INS_GET_TXN_HASH) {
+            txn_init(&ctx->txn, sigIndex, changeIndex);
+        } else {
+            v2txn_init(&ctx->txn, sigIndex, changeIndex);
+        }
 
         // Set ctx->sign according to P2.
         ctx->sign = (p2 & P2_SIGN_HASH);
@@ -170,9 +177,13 @@ uint16_t handleCalcTxnHash(
     }
 
     // Add the new data to transaction decoder.
-    txn_update(&ctx->txn, dataBuffer, dataLength);
+    if (ins == INS_GET_TXN_HASH) {
+        txn_update(&ctx->txn, dataBuffer, dataLength);
+    } else {
+        v2txn_update(&ctx->txn, dataBuffer, dataLength);
+    }
 
-    switch (txn_parse(&ctx->txn)) {
+    switch ((ins == INS_GET_TXN_HASH) ? txn_parse(&ctx->txn) : v2txn_parse(&ctx->txn)) {
         case TXN_STATE_ERR:
             // don't leave state lingering
             zero_ctx();
@@ -185,13 +196,18 @@ uint16_t handleCalcTxnHash(
             // Computes the number of pairs to display
             contentTagValueList.nbPairs = 0;
             for (i = 0; i < ctx->txn.elementIndex; i++) {
-                if (ctx->txn.elements[i].elemType == TXN_ELEM_SC_OUTPUT) {
+                if (ctx->txn.elements[i].elemType == TXN_ELEM_SC_OUTPUT ||
+                    ctx->txn.elements[i].elemType == V2TXN_ELEM_SC_OUTPUT) {
                     ctx->txn.lastSiacoinOutputIndex = i;
-                } else if (ctx->txn.elements[i].elemType == TXN_ELEM_SF_OUTPUT) {
+                } else if (ctx->txn.elements[i].elemType == TXN_ELEM_SF_OUTPUT ||
+                           ctx->txn.elements[i].elemType == V2TXN_ELEM_SF_OUTPUT) {
                     ctx->txn.lastSiafundOutputIndex = i;
                 }
                 contentTagValueList.nbPairs +=
-                    (ctx->txn.elements[i].elemType == TXN_ELEM_MINER_FEE) ? 1 : 2;
+                    (ctx->txn.elements[i].elemType == TXN_ELEM_MINER_FEE ||
+                     ctx->txn.elements[i].elemType == V2TXN_ELEM_MINER_FEE)
+                        ? 1
+                        : 2;
             }
             contentTagValueList.callback = getTagValuePairs;
             nbgl_useCaseReview(TYPE_TRANSACTION,

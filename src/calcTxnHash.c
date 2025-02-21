@@ -135,8 +135,8 @@ static void fmtTxnElem(void) {
     txn_state_t *txn = &ctx->txn;
 
     switch (txn->elements[ctx->elementIndex].elemType) {
-        case V2TXN_ELEM_SC_OUTPUT:
         case TXN_ELEM_SC_OUTPUT:
+        case V2TXN_ELEM_SC_OUTPUT:
             memmove(ctx->labelStr, "SC Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             // An element can have multiple screens. For each siacoin output, the
@@ -155,8 +155,8 @@ static void fmtTxnElem(void) {
                 ctx->elementIndex++;
             }
             break;
-        case V2TXN_ELEM_SF_OUTPUT:
         case TXN_ELEM_SF_OUTPUT:
+        case V2TXN_ELEM_SF_OUTPUT:
             memmove(ctx->labelStr, "SF Output #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
             if (ctx->elemPart == 0) {
@@ -171,8 +171,8 @@ static void fmtTxnElem(void) {
                 ctx->elementIndex++;
             }
             break;
-        case V2TXN_ELEM_MINER_FEE:
         case TXN_ELEM_MINER_FEE:
+        case V2TXN_ELEM_MINER_FEE:
             // Miner fees only have one part.
             memmove(ctx->labelStr, "Miner Fee #", 11);
             bin2dec(ctx->labelStr + 11, display_index());
