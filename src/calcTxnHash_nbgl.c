@@ -94,12 +94,14 @@ static nbgl_contentTagValue_t *getTagValuePairs(uint8_t pairIndex) {
             lastOutputIndex = txn->lastSiafundOutputIndex;
             if (lastOutputIndex == USHRT_MAX) {
                 lastOutputIndex = txn->lastSiacoinOutputIndex;
-                if (lastOutputIndex == USHRT_MAX) {
-                    lastOutputIndex = 0;
-                }
+            }
+            if (lastOutputIndex == USHRT_MAX) {
+                lastOutputIndex = 0;
+            } else {
+                lastOutputIndex++;
             }
 
-            ctx->elementIndex = pairIndex - 2 * lastOutputIndex;
+            ctx->elementIndex = pairIndex - lastOutputIndex;
             valLen = cur2dec(ctx->fullStr[0], txn->elements[ctx->elementIndex].outVal);
             formatSC(ctx->fullStr[0], valLen);
             contentTagValue.item = "Miner Fee Amount (SC)";
