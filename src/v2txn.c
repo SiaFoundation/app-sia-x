@@ -41,6 +41,8 @@ static void writeUint64BE(uint8_t *buf, uint64_t value) {
 }
 
 static void readCurrency(txn_state_t *txn, uint8_t *outVal) {
+    need_at_least(txn, 16);
+
     const uint64_t lo = readInt(txn);
     const uint64_t hi = readInt(txn);
 
@@ -109,7 +111,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             advance(txn);
             txn->elements[txn->elementIndex].elemType++;
         } else {
-            txn->sliceLen = 0;
+            txn->sliceLen = 1;
             txn->sliceIndex = 0;
             txn->elements[txn->elementIndex].elemType++;
             // Either new foundation address or miner fee, thesse require their
@@ -155,6 +157,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             memmove(txn->elements[txn->elementIndex].outAddr, "[Miner Fee]", 12);
             advance(txn);
 
+            txn->sliceIndex++;
             txn->elements[txn->elementIndex + 1].elemType =
                 txn->elements[txn->elementIndex].elemType;
             txn->elementIndex++;
@@ -185,6 +188,7 @@ static void __txn_next_elem(txn_state_t *txn) {
             seek(txn, 1);
             advance(txn);
 
+            txn->sliceIndex++;
             return;
 
             // these elements should not be present

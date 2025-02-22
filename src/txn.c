@@ -347,10 +347,6 @@ void txn_init(txn_state_t *txn, uint16_t sigIndex, uint32_t changeIndex) {
     txn->sigIndex = sigIndex;
 
     txn->elementIndex = 0;
-#ifdef HAVE_NBGL
-    txn->lastSiacoinOutputIndex = USHRT_MAX;
-    txn->lastSiafundOutputIndex = USHRT_MAX;
-#endif
     txn->elements[txn->elementIndex].elemType =
         TXN_ELEM_SC_INPUT - 1;  // first increment brings it to TXN_ELEM_SC_INPUT
 

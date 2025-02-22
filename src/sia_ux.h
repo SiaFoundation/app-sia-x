@@ -40,6 +40,10 @@ typedef struct {
     uint8_t elemPart;  // screen index of elements
 
     uint16_t elementIndex;
+#ifdef HAVE_NBGL
+    uint16_t lastSiacoinOutputIndex;
+    uint16_t lastSiafundOutputIndex;
+#endif
 
     txn_state_t txn;
     // NULL-terminated strings for display

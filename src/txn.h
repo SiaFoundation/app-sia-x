@@ -61,13 +61,7 @@ typedef struct {
     uint16_t pos;      // mid-decode offset; reset to 0 after each elem
 
     uint16_t elementIndex;
-#ifdef HAVE_NBGL
-    uint16_t lastSiacoinOutputIndex;
-    uint16_t lastSiafundOutputIndex;
-#endif
     txn_elem_t elements[MAX_ELEMS];  // only elements that will be displayed
-
-    uint64_t fields;  // v2 fields
 
     uint64_t sliceLen;    // most-recently-seen slice length prefix
     uint16_t sliceIndex;  // offset within current element slice

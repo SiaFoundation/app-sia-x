@@ -37,12 +37,12 @@ static void confirm_callback(bool confirm) {
     }
 }
 
-txnElemType_e element_type(const txn_state_t *const txn, uint8_t pairIndex) {
-    if (txn->lastSiacoinOutputIndex != USHRT_MAX &&
-        (pairIndex / 2) <= txn->lastSiacoinOutputIndex) {
+txnElemType_e element_type(uint8_t pairIndex) {
+    if (ctx->lastSiacoinOutputIndex != USHRT_MAX &&
+        (pairIndex / 2) <= ctx->lastSiacoinOutputIndex) {
         return TXN_ELEM_SC_OUTPUT;
-    } else if (txn->lastSiafundOutputIndex != USHRT_MAX &&
-               (pairIndex / 2) <= txn->lastSiafundOutputIndex) {
+    } else if (ctx->lastSiafundOutputIndex != USHRT_MAX &&
+               (pairIndex / 2) <= ctx->lastSiafundOutputIndex) {
         return TXN_ELEM_SF_OUTPUT;
     }
     return TXN_ELEM_MINER_FEE;
@@ -54,7 +54,7 @@ static nbgl_contentTagValue_t *getTagValuePairs(uint8_t pairIndex) {
     uint8_t valLen = 0;
     uint16_t lastOutputIndex = 0;
 
-    switch (element_type(txn, pairIndex)) {
+    switch (element_type(pairIndex)) {
         case TXN_ELEM_SC_OUTPUT:
         case V2TXN_ELEM_SC_OUTPUT:
             // For each siacoin output, the user needs to see both
@@ -91,9 +91,9 @@ static nbgl_contentTagValue_t *getTagValuePairs(uint8_t pairIndex) {
 
         case TXN_ELEM_MINER_FEE:
         case V2TXN_ELEM_MINER_FEE:
-            lastOutputIndex = txn->lastSiafundOutputIndex;
+            lastOutputIndex = ctx->lastSiafundOutputIndex;
             if (lastOutputIndex == USHRT_MAX) {
-                lastOutputIndex = txn->lastSiacoinOutputIndex;
+                lastOutputIndex = ctx->lastSiacoinOutputIndex;
             }
             if (lastOutputIndex == USHRT_MAX) {
                 lastOutputIndex = 0;
@@ -128,9 +128,6 @@ static void zero_ctx(void) {
 // key. The transaction is displayed piece-wise to the user.
 uint16_t handleCalcTxnHash(
     uint8_t ins, uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength) {
-    nbgl_contentTagValueList_t contentTagValueList = {0};
-    uint16_t i = 0;
-
     if ((p1 != P1_FIRST && p1 != P1_MORE) || (p2 != P2_DISPLAY_HASH && p2 != P2_SIGN_HASH)) {
         return SW_INVALID_PARAM;
     }
@@ -147,6 +144,8 @@ uint16_t handleCalcTxnHash(
         }
         explicit_bzero(ctx, sizeof(calcTxnHashContext_t));
         ctx->initialized = true;
+        ctx->lastSiacoinOutputIndex = USHRT_MAX;
+        ctx->lastSiafundOutputIndex = USHRT_MAX;
 
         // If this is the first packet, it will include the key index, sig
         // index, and change index in addition to the transaction data. Use
@@ -195,16 +194,16 @@ uint16_t handleCalcTxnHash(
         case TXN_STATE_PARTIAL:
             return SW_OK;
             break;
-        case TXN_STATE_FINISHED:
+        case TXN_STATE_FINISHED: {
             // Computes the number of pairs to display
-            contentTagValueList.nbPairs = 0;
-            for (i = 0; i < ctx->txn.elementIndex; i++) {
+            nbgl_contentTagValueList_t contentTagValueList = {0};
+            for (uint16_t i = 0; i < ctx->txn.elementIndex; i++) {
                 if (ctx->txn.elements[i].elemType == TXN_ELEM_SC_OUTPUT ||
                     ctx->txn.elements[i].elemType == V2TXN_ELEM_SC_OUTPUT) {
-                    ctx->txn.lastSiacoinOutputIndex = i;
+                    ctx->lastSiacoinOutputIndex = i;
                 } else if (ctx->txn.elements[i].elemType == TXN_ELEM_SF_OUTPUT ||
                            ctx->txn.elements[i].elemType == V2TXN_ELEM_SF_OUTPUT) {
-                    ctx->txn.lastSiafundOutputIndex = i;
+                    ctx->lastSiafundOutputIndex = i;
                 }
                 contentTagValueList.nbPairs +=
                     (ctx->txn.elements[i].elemType == TXN_ELEM_MINER_FEE ||
@@ -221,6 +220,7 @@ uint16_t handleCalcTxnHash(
                                (ctx->sign) ? "Sign Transaction" : "Hash Transaction",
                                confirm_callback);
             break;
+        }
     }
 
     return 0;
