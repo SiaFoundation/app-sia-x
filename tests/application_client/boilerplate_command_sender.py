@@ -34,6 +34,7 @@ class InsType(IntEnum):
     GET_PUBLIC_KEY = 0x02
     SIGN_HASH = 0x04
     GET_TXN_HASH = 0x08
+    GET_V2_TXN_HASH = 0x10
 
 
 class Errors(IntEnum):
@@ -145,6 +146,42 @@ class BoilerplateCommandSender:
         with self.backend.exchange_async(
             cla=CLA,
             ins=InsType.GET_TXN_HASH,
+            p1=p1,
+            p2=P2.P2_SIGN_HASH,
+            data=messages[-1],
+        ) as response:
+            yield response
+
+    @contextmanager
+    def sign_v2_tx(
+        self,
+        key_index: int,
+        sig_index: int,
+        change_index: int,
+        transaction: bytes,
+    ) -> Generator[None, None, None]:
+        p1 = P1.P1_START
+        messages = split_message(
+            key_index.to_bytes(4, "little", signed=False)
+            + sig_index.to_bytes(2, "little", signed=False)
+            + change_index.to_bytes(4, "little", signed=False)
+            + transaction,
+            MAX_APDU_LEN,
+        )
+        for i in range(len(messages) - 1):
+            with self.backend.exchange_async(
+                cla=CLA,
+                ins=InsType.GET_V2_TXN_HASH,
+                p1=p1,
+                p2=P2.P2_SIGN_HASH,
+                data=messages[i],
+            ) as response:
+                pass
+            p1 = P1.P1_MORE
+
+        with self.backend.exchange_async(
+            cla=CLA,
+            ins=InsType.GET_V2_TXN_HASH,
             p1=p1,
             p2=P2.P2_SIGN_HASH,
             data=messages[-1],
