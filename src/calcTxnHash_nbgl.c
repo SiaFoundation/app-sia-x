@@ -204,7 +204,8 @@ uint16_t handleCalcTxnHash(
                 } else if (elemType == TXN_ELEM_SF_OUTPUT || elemType == V2TXN_ELEM_SF_OUTPUT) {
                     ctx->lastSiafundOutputIndex = i;
                 }
-                contentTagValueList.nbPairs += (elemType == TXN_ELEM_MINER_FEE || elemType == V2TXN_ELEM_MINER_FEE) ? 1 : 2;
+                contentTagValueList.nbPairs +=
+                    (elemType == TXN_ELEM_MINER_FEE || elemType == V2TXN_ELEM_MINER_FEE) ? 1 : 2;
             }
             contentTagValueList.callback = getTagValuePairs;
             nbgl_useCaseReview(TYPE_TRANSACTION,
