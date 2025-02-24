@@ -198,18 +198,13 @@ uint16_t handleCalcTxnHash(
             // Computes the number of pairs to display
             nbgl_contentTagValueList_t contentTagValueList = {0};
             for (uint16_t i = 0; i < ctx->txn.elementIndex; i++) {
-                if (ctx->txn.elements[i].elemType == TXN_ELEM_SC_OUTPUT ||
-                    ctx->txn.elements[i].elemType == V2TXN_ELEM_SC_OUTPUT) {
+                const txnElemType_e elemType = ctx->txn.elements[i].elemType;
+                if (elemType == TXN_ELEM_SC_OUTPUT || elemType == V2TXN_ELEM_SC_OUTPUT) {
                     ctx->lastSiacoinOutputIndex = i;
-                } else if (ctx->txn.elements[i].elemType == TXN_ELEM_SF_OUTPUT ||
-                           ctx->txn.elements[i].elemType == V2TXN_ELEM_SF_OUTPUT) {
+                } else if (elemType == TXN_ELEM_SF_OUTPUT || elemType == V2TXN_ELEM_SF_OUTPUT) {
                     ctx->lastSiafundOutputIndex = i;
                 }
-                contentTagValueList.nbPairs +=
-                    (ctx->txn.elements[i].elemType == TXN_ELEM_MINER_FEE ||
-                     ctx->txn.elements[i].elemType == V2TXN_ELEM_MINER_FEE)
-                        ? 1
-                        : 2;
+                contentTagValueList.nbPairs += (elemType == TXN_ELEM_MINER_FEE || elemType == V2TXN_ELEM_MINER_FEE) ? 1 : 2;
             }
             contentTagValueList.callback = getTagValuePairs;
             nbgl_useCaseReview(TYPE_TRANSACTION,
