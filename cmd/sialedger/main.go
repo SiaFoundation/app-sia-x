@@ -225,16 +225,16 @@ func (n *Nano) GetVersion() (version string, err error) {
 	return fmt.Sprintf("v%d.%d.%d", resp[0], resp[1], resp[2]), nil
 }
 
-func (n *Nano) GetPublicKey(index uint32) (pubkey [32]byte, err error) {
+func (n *Nano) GetPublicKey(index uint32) (pubkey types.PublicKey, err error) {
 	encIndex := make([]byte, 4)
 	binary.LittleEndian.PutUint32(encIndex, index)
 
 	resp, err := n.Exchange(cmdGetPublicKey, 0, p2DisplayPubkey, encIndex)
 	if err != nil {
-		return [32]byte{}, err
+		return types.PublicKey{}, err
 	}
 	if copy(pubkey[:], resp) != len(pubkey) {
-		return [32]byte{}, errors.New("pubkey has wrong length")
+		return types.PublicKey{}, errors.New("pubkey has wrong length")
 	}
 	return
 }
@@ -251,21 +251,21 @@ func (n *Nano) GetAddress(index uint32) (addr types.Address, err error) {
 	return
 }
 
-func (n *Nano) SignHash(hash [32]byte, keyIndex uint32) (sig [64]byte, err error) {
+func (n *Nano) SignHash(hash [32]byte, keyIndex uint32) (sig types.Signature, err error) {
 	encIndex := make([]byte, 4)
 	binary.LittleEndian.PutUint32(encIndex, keyIndex)
 
 	resp, err := n.Exchange(cmdSignHash, 0, 0, append(encIndex, hash[:]...))
 	if err != nil {
-		return [64]byte{}, err
+		return types.Signature{}, err
 	}
 	if copy(sig[:], resp) != len(sig) {
-		return [64]byte{}, errors.New("signature has wrong length")
+		return types.Signature{}, errors.New("signature has wrong length")
 	}
 	return
 }
 
-func (n *Nano) CalcTxnHash(op byte, data []byte, sigIndex uint16, changeIndex uint32) (hash [32]byte, err error) {
+func (n *Nano) CalcTxnHash(op byte, data []byte, sigIndex uint16, changeIndex uint32) (hash types.Hash256, err error) {
 	buf := bytes.NewBuffer(nil)
 	binary.Write(buf, binary.LittleEndian, uint32(0)) // keyIndex; ignored since we are not signing
 	binary.Write(buf, binary.LittleEndian, sigIndex)
@@ -280,16 +280,16 @@ func (n *Nano) CalcTxnHash(op byte, data []byte, sigIndex uint16, changeIndex ui
 		}
 		resp, err = n.Exchange(op, p1, p2DisplayHash, buf.Next(255))
 		if err != nil {
-			return [32]byte{}, err
+			return types.Hash256{}, err
 		}
 	}
 	if copy(hash[:], resp) != len(hash) {
-		return [32]byte{}, errors.New("hash has wrong length")
+		return types.Hash256{}, errors.New("hash has wrong length")
 	}
 	return
 }
 
-func (n *Nano) SignTxn(op byte, data []byte, sigIndex uint16, keyIndex, changeIndex uint32) (sig [64]byte, err error) {
+func (n *Nano) SignTxn(op byte, data []byte, sigIndex uint16, keyIndex, changeIndex uint32) (sig types.Signature, err error) {
 	buf := bytes.NewBuffer(nil)
 	binary.Write(buf, binary.LittleEndian, keyIndex)
 	binary.Write(buf, binary.LittleEndian, sigIndex)
@@ -304,11 +304,11 @@ func (n *Nano) SignTxn(op byte, data []byte, sigIndex uint16, keyIndex, changeIn
 		}
 		resp, err = n.Exchange(op, p1, p2SignHash, buf.Next(255))
 		if err != nil {
-			return [64]byte{}, err
+			return types.Signature{}, err
 		}
 	}
 	if copy(sig[:], resp) != len(sig) {
-		return [64]byte{}, errors.New("signature has wrong length")
+		return types.Signature{}, errors.New("signature has wrong length")
 	}
 	return
 }
@@ -513,8 +513,7 @@ func main() {
 		if err != nil {
 			log.Fatalln("Couldn't get public key:", err)
 		}
-		pk := types.PublicKey(pubkey)
-		fmt.Println(pk.String())
+		fmt.Println(pubkey)
 
 	case hashCmd:
 		if len(args) != 2 {
@@ -534,7 +533,7 @@ func main() {
 		if err != nil {
 			log.Fatalln("Couldn't get signature:", err)
 		}
-		fmt.Println(types.Signature(sig).String())
+		fmt.Println(base64.StdEncoding.EncodeToString(sig[:]))
 
 	case txnCmd:
 		if (*txnHash && len(args) != 2) || (!*txnHash && len(args) != 3) {
@@ -574,7 +573,7 @@ func main() {
 			if err != nil {
 				log.Fatalln("Couldn't get hash:", err)
 			}
-			fmt.Println(hex.EncodeToString(sighash[:]))
+			fmt.Println(sighash)
 		} else {
 			sig, err := nano.SignTxn(op, buf.Bytes(), sigIndex, parseIndex(args[2]), uint32(*txnChangeIndex))
 			if err != nil {
