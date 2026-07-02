@@ -39,11 +39,12 @@ repos:
       - id: markdownlint-cli2
         types_or: [markdown]
 
-  - repo: https://github.com/PyCQA/pylint
-    rev: v3.3.8
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.15.20
     hooks:
-      - id: pylint
-        language: system
-        types: [python]
-        args: ['--jobs=0', '--rcfile=tests/setup.cfg']
-        files: '^tests/.*$'
+      # Run the linter.
+      - id: ruff-check
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
