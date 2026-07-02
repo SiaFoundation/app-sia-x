@@ -1,7 +1,9 @@
 from ragger.backend import BackendInterface
 
 from application_client.boilerplate_command_sender import BoilerplateCommandSender
-from application_client.boilerplate_response_unpacker import unpack_get_app_and_version_response
+from application_client.boilerplate_response_unpacker import (
+    unpack_get_app_and_version_response,
+)
 
 from utils import util_verify_version, util_verify_name
 

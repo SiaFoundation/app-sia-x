@@ -17,10 +17,12 @@ test_transaction = bytes.fromhex(
 )
 # pylint: enable=line-too-long
 
+
 # Transaction signature refused test
 # The test will ask for a transaction signature that will be refused on screen
-def test_sign_tx_refused(backend: BackendInterface,
-                         scenario_navigator: NavigateWithScenario):
+def test_sign_tx_refused(
+    backend: BackendInterface, scenario_navigator: NavigateWithScenario
+):
     # Use the app interface instead of raw interface
     client = BoilerplateCommandSender(backend)
     # Disable raising when trying to unpack an error APDU
@@ -36,8 +38,9 @@ def test_sign_tx_refused(backend: BackendInterface,
 
 # Transaction signature accepted test
 # The test will ask for a transaction signature that will be accepted on screen
-def test_sign_tx_accept(backend: BackendInterface,
-                        scenario_navigator: NavigateWithScenario):
+def test_sign_tx_accept(
+    backend: BackendInterface, scenario_navigator: NavigateWithScenario
+):
     # Use the app interface instead of raw interface
     client = BoilerplateCommandSender(backend)
 

@@ -1,6 +1,7 @@
 from typing import Tuple
 from struct import unpack
 
+
 # remainder, data_len, data
 def pop_sized_buf_from_buffer(buffer: bytes, size: int) -> Tuple[bytes, bytes]:
     return buffer[size:], buffer[0:size]

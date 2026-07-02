@@ -17,28 +17,35 @@ test_to_sign = bytes.fromhex(
 
 def __toggle_setting(device: Device, navigator: Navigator) -> None:
     if device.is_nano:
-        navigator.navigate([
-            NavInsID.RIGHT_CLICK,
-            NavInsID.BOTH_CLICK,
-            NavInsID.BOTH_CLICK,
-            NavInsID.RIGHT_CLICK,
-            NavInsID.BOTH_CLICK,
-            NavInsID.BOTH_CLICK,
-        ], screen_change_before_first_instruction=False)
+        navigator.navigate(
+            [
+                NavInsID.RIGHT_CLICK,
+                NavInsID.BOTH_CLICK,
+                NavInsID.BOTH_CLICK,
+                NavInsID.RIGHT_CLICK,
+                NavInsID.BOTH_CLICK,
+                NavInsID.BOTH_CLICK,
+            ],
+            screen_change_before_first_instruction=False,
+        )
     else:
-        navigator.navigate([
-            NavInsID.USE_CASE_HOME_SETTINGS,
-            NavIns(NavInsID.TOUCH, POSITIONS["ChoiceList"][device.type][1]),
-            NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT,
-        ], screen_change_before_first_instruction=False)
-
+        navigator.navigate(
+            [
+                NavInsID.USE_CASE_HOME_SETTINGS,
+                NavIns(NavInsID.TOUCH, POSITIONS["ChoiceList"][device.type][1]),
+                NavInsID.USE_CASE_SETTINGS_MULTI_PAGE_EXIT,
+            ],
+            screen_change_before_first_instruction=False,
+        )
 
 
 # Test will ask to sign a hash that will be accepted on screen
-def test_sign_hash_accept(device: Device,
-                          backend: BackendInterface,
-                          navigator: Navigator,
-                          scenario_navigator: NavigateWithScenario):
+def test_sign_hash_accept(
+    device: Device,
+    backend: BackendInterface,
+    navigator: Navigator,
+    scenario_navigator: NavigateWithScenario,
+):
     client = BoilerplateCommandSender(backend)
     index = 5
 
@@ -59,10 +66,12 @@ def test_sign_hash_accept(device: Device,
 
 
 # Test will ask to sign a hash that will be rejected on screen
-def test_sign_hash_reject(device: Device,
-                          backend: BackendInterface,
-                          navigator: Navigator,
-                          scenario_navigator: NavigateWithScenario):
+def test_sign_hash_reject(
+    device: Device,
+    backend: BackendInterface,
+    navigator: Navigator,
+    scenario_navigator: NavigateWithScenario,
+):
     client = BoilerplateCommandSender(backend)
     index = 5
 

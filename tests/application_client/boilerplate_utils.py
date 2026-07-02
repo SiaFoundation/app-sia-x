@@ -12,13 +12,13 @@ def write_varint(n: int) -> bytes:
         return n.to_bytes(1, byteorder="little")
 
     if n <= UINT16_MAX:
-        return b"\xFD" + n.to_bytes(2, byteorder="little")
+        return b"\xfd" + n.to_bytes(2, byteorder="little")
 
     if n <= UINT32_MAX:
-        return b"\xFE" + n.to_bytes(4, byteorder="little")
+        return b"\xfe" + n.to_bytes(4, byteorder="little")
 
     if n <= UINT64_MAX:
-        return b"\xFF" + n.to_bytes(8, byteorder="little")
+        return b"\xff" + n.to_bytes(8, byteorder="little")
 
     raise ValueError(f"Can't write to varint: '{n}'!")
 
